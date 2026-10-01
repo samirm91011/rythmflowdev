@@ -51,6 +51,11 @@ public class PayFastService(Microsoft.Extensions.Options.IOptions<PayFastOptions
             new("cycles", "0"),      // 0 = indefinite
         };
         var query = ToQueryString(fields.Where(f => !string.IsNullOrEmpty(f.Value)));
+        // PayFast's shared public test merchant (10000100) accepts unsigned requests but rejects any signature, because its
+        // passphrase is not ours to know. So in sandbox mode with no passphrase configured we send the request unsigned.
+        // A real or personal sandbox merchant must set a passphrase, which switches signing on (always required in production).
+        if (_o.Sandbox && string.IsNullOrEmpty(_o.Passphrase))
+            return $"{ProcessHost}/eng/process?{query}";
         var sig = Md5(AppendPassphrase(query));
         return $"{ProcessHost}/eng/process?{query}&signature={sig}";
     }
