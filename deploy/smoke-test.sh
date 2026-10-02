@@ -28,7 +28,8 @@ has() { if printf '%s' "$3" | grep -qi -- "$2"; then ok "$1"; else bad "$1" "'$2
 
 # call METHOD PATH [TOKEN] [JSON]  -> prints HTTP status; body in $BODY
 call() {
-  local m="$1" p="$2" t="${3:-}" d="${4:-}" args=(-sS -m 40 -o "$BODY" -w '%{http_code}' -X "$m")
+  local m="$1" p="$2" t="${3:-}" d="${4:-}"
+  local args=(-sS -m 40 -o "$BODY" -w '%{http_code}' -X "$m")   # separate line: $m must exist before it is used here
   [ -n "$t" ] && args+=(-H "Authorization: Bearer $t")
   if [ -n "$d" ]; then args+=(-H 'Content-Type: application/json' -d "$d"); fi
   curl "${args[@]}" "$BASE$p" 2>/dev/null || echo "000"
