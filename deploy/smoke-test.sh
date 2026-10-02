@@ -17,7 +17,11 @@ PASS=0; FAIL=0
 BODY="$(mktemp)"; trap 'rm -f "$BODY"' EXIT
 
 ok()  { echo "  PASS  $1"; PASS=$((PASS+1)); }
-bad() { echo "  FAIL  $1  -> $2"; FAIL=$((FAIL+1)); }
+bad() {
+  echo "  FAIL  $1  -> $2"; FAIL=$((FAIL+1))
+  # On GitHub, also post the failure as an annotation so it is visible on the run page without opening the log.
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::error title=Smoke check failed::$1 -> $2"; fi
+}
 eq()  { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1" "expected '$2', got '$3'"; fi; }
 ge()  { if [ "${3:-0}" -ge "$2" ] 2>/dev/null; then ok "$1"; else bad "$1" "expected >= $2, got '${3:-}'"; fi; }
 has() { if printf '%s' "$3" | grep -qi -- "$2"; then ok "$1"; else bad "$1" "'$2' not found"; fi; }

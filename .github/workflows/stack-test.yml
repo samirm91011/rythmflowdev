@@ -117,7 +117,12 @@ jobs:
 
       - name: API log on failure
         if: failure()
-        run: $COMPOSE logs --tail=200 api
+        run: |
+          $COMPOSE logs --tail=200 api
+          # also show the most telling lines as annotations (visible without opening the log)
+          $COMPOSE logs --no-log-prefix api | grep -E "fail:|Unhandled|Exception|error" | tail -8 | while IFS= read -r line; do
+            echo "::warning title=API log::${line:0:400}"
+          done
 
       - name: Upload raw results
         if: always()
