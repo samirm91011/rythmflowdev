@@ -82,5 +82,33 @@ public record PlanUpsert(
     string? Features,
     string? Status);
 
-public record AdminSummaryDto(int Users, int ActiveSubscriptions, int UpcomingClasses, int ActiveBookings, decimal MonthlyRecurringRevenue);
+public record AdminSummaryDto(int Users, int ActiveSubscriptions, int UpcomingClasses, int ActiveBookings, decimal MonthlyRecurringRevenue, int OpenErrors);
+
+// ---- Password ----
+public record ForgotPasswordRequest([Required, EmailAddress, StringLength(255)] string Email);
+public record ResetPasswordRequest(
+    [Required, EmailAddress, StringLength(255)] string Email,
+    [Required, StringLength(10)] string Code,
+    [Required, StringLength(100, MinimumLength = 8)] string NewPassword);
+public record ChangePasswordRequest(
+    [Required] string CurrentPassword,
+    [Required, StringLength(100, MinimumLength = 8)] string NewPassword);
+
+// ---- Notifications ----
+public record NotificationDto(int Id, string Kind, string Title, string Body, string? Route, DateTime CreatedAt, bool Read);
+public record MarkReadRequest(List<int>? Ids);
+
+// ---- Error reporting ----
+public record ErrorReportRequest(
+    [Required, StringLength(500)] string Message,
+    [StringLength(8000)] string? Details,
+    [StringLength(200)] string? Route,
+    [StringLength(40)] string? AppVersion,
+    [StringLength(120)] string? Device,
+    bool Fatal);
+public record ErrorLogDto(
+    int Id, string Source, string Message, string Details, string? Route, string? UserEmail, string? AppVersion,
+    string? Device, int Count, DateTime FirstSeen, DateTime LastSeen, string Status);
+
+public record CancelResultDto(string Message, bool CancelledWithPayFast);
 

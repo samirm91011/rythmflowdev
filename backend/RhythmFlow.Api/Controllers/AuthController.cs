@@ -52,6 +52,34 @@ public class AuthController(AppDbContext db, TokenService tokens) : ApiControlle
         return Ok(new AuthResponse(tokens.CreateToken(user), ToDto(user)));
     }
 
+    /// <summary>Emails a 6-digit code. Always answers the same way so nobody can test which emails have accounts.</summary>
+    [HttpPost("forgot-password"), EnableRateLimiting("auth")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest req, [FromServices] PasswordResetService reset)
+    {
+        await reset.RequestAsync(req.Email);
+        return Ok(new { message = "If that email has an account, we've sent a 6-digit code. It expires in 15 minutes." });
+    }
+
+    [HttpPost("reset-password"), EnableRateLimiting("auth")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordRequest req, [FromServices] PasswordResetService reset)
+    {
+        var (ok, error) = await reset.ResetAsync(req.Email, req.Code, req.NewPassword);
+        return ok ? Ok(new { message = "Your password has been changed. You can log in now." }) : BadRequest(new { error });
+    }
+
+    [Authorize, HttpPost("change-password"), EnableRateLimiting("auth")]
+    public async Task<ActionResult<AuthResponse>> ChangePassword(ChangePasswordRequest req)
+    {
+        var user = await db.Users.FindAsync(UserId);
+        if (user is null) return Unauthorized();
+        if (Hasher.VerifyHashedPassword(user, user.PasswordHash, req.CurrentPassword) == PasswordVerificationResult.Failed)
+            return BadRequest(new { error = "Your current password isn't right." });
+        user.PasswordHash = Hasher.HashPassword(user, req.NewPassword);
+        user.SecurityStamp = Guid.NewGuid().ToString("N"); // signs out other devices
+        await db.SaveChangesAsync();
+        return Ok(new AuthResponse(tokens.CreateToken(user), ToDto(user))); // this device gets a fresh token
+    }
+
     [Authorize, HttpGet("me")]
     public async Task<ActionResult<UserDto>> Me()
     {

@@ -1,0 +1,43 @@
+# Rhythm & Flow – Project Log
+
+Living record of what exists, what changed, and what is left. Newest entries at the top of each section.
+**Priority:** a stable demo for the lecturer's trial presentation. Test details are the team's own; client details are swapped in at go-live (see `GO-LIVE.md`).
+
+## Status at a glance (2026-10-02)
+| Area | State |
+|---|---|
+| Android app (Compose) | Built and running on the emulator. Welcome, sign-in, Home, Move, lesson detail, video player, Classes, You verified on screen. Other screens built but not yet reviewed visually. |
+| Backend API (ASP.NET Core 10, SQLite) | Running. Auth, plans, PayFast checkout, protected video, progress, classes, bookings, journal, admin endpoints tested by script. |
+| Payments | PayFast **sandbox** checkout link accepted by PayFast. Payment confirmation (ITN) cannot reach `localhost`; demo uses the debug "Simulate payment" button. |
+| In progress | Password reset, subscription cancel through PayFast, notifications + class reminders, error logging to admins, elegant visual refresh, full screen-by-screen test. |
+| Dropped | Google sign-in (decided 2026-10-02: not needed, extra setup). Per-user video watermark (decided out of scope). |
+
+## Decisions
+- 2026-10-02 **Presentation date: 7 Oct 2026.** Option A chosen: keep Smart App Control on; backend runs on Azure (App Service + PostgreSQL), built/tested by GitHub Actions. Samir's GitHub repo: `samirm91011/rythmflowdev`. A group member will set up Azure from `docs/AZURE-SETUP.md`.
+- 2026-10-02 Gmail account `rythmandflow12@gmail.com` (team test mailbox) configured for password-reset emails and admin error alerts.
+- 2026-10-02 Use the team's own PayFast sandbox, Gmail and test data now; switch to the client's details at launch.
+- 2026-10-02 Remove Google sign-in. (Google sign-in itself is free; the ~$25 fee is the Play Store developer account and is only needed to publish.)
+- 2026-10-02 Email via Gmail SMTP with an App Password (settings in the git-ignored `appsettings.Local.json`).
+- Earlier: cloud-neutral backend (SQLite locally, PostgreSQL by config); videos are placeholder public clips; plans R99/R199/R299 are placeholders; Shop is a "coming soon" screen.
+
+## Work log
+### 2026-10-02
+- PayFast sandbox merchant details added to `appsettings.Local.json`; verified live: PayFast sandbox accepts signed one-off and monthly-subscription requests built with our passphrase (this also proves our signing code is correct).
+- Google sign-in removed from the backend (service, package, user fields).
+- Backend features finished and verified by script against the running API: **password reset** (6-digit emailed code, 15-min expiry, 5 guesses, 3 requests/hour, old logins signed out), **change password**, **notifications** (payment, subscription, class-cancelled events), **subscription cancel** (calls PayFast's merchant API first; access kept until the paid period ends; demo subscriptions cancel locally), **error logging** (any API crash and any app-reported error is stored, de-duplicated, shown to admins, notified in-app and emailed when SMTP is configured), unique-booking index (double-tap safe), login tokens revoked on password change/disable.
+- **Automated tests written** (`backend/RhythmFlow.Api.Tests`, ~45 xUnit tests: progress, entitlement, booking rules, PayFast signing/encoding, signed video links, password reset, subscription payments/cancel). They compile, but **cannot run on this PC**: Windows Smart App Control blocks the freshly built test DLL (0x800711C7). They will run in GitHub Actions. Do NOT turn Smart App Control off (it cannot be turned back on without reinstalling Windows).
+- Demo database reset (new tables).
+- Backend: added tables and services for password-reset codes, in-app notifications and error logs; email service (Gmail/SMTP with log fallback); PayFast merchant-API client for cancelling subscriptions; unique-booking index; login tokens now carry a security stamp (planned wiring). **Not yet wired into controllers/Program or built** – the running API is still the previous build.
+- Created `appsettings.Local.json` (private settings template) and this documentation set.
+
+### 2026-10-01
+- Built the Android app and API from the Task 1 doc and wireframes; fixed PayFast sandbox (shared test merchant rejects signatures, so unsigned in sandbox without a passphrase); fixed logo transparency and text-encoding bugs; installed Git, Temurin JDK 17, Gradle 8.13; fixed Java TLS trust on this network. Local git repo created.
+
+## Known issues / risks
+- **BLOCKER (2026-10-02): Windows Smart App Control is enforcing on this laptop and now blocks every locally built .NET DLL** (error 0x800711C7): the test project, then the API itself (Debug and Release publish). Building still works; *running* the result does not. It was fine on 2026-10-01 (Smart App Control probably switched from evaluation to enforcement overnight).
+  - Consequence: the backend cannot run on this laptop. The API must run in the cloud (Azure), built by GitHub Actions or built locally and uploaded; tests run in GitHub Actions.
+  - Options for Samir: (A) keep Smart App Control on and use Azure for everything (recommended; also required by the rubric); (B) turn Smart App Control off in Windows Security → App & browser control → Smart App Control (**cannot be turned back on without reinstalling Windows**; Claude will not do this); (C) run the backend inside WSL2/Linux.
+  - The Android app is NOT affected (APKs are not loaded by Windows).
+- Some screens have not been viewed on screen yet (plans/payment, Journal, Explore, Shop, Settings, Edit Profile, Bookings, post-workout, admin).
+- Emulator sometimes hangs on first boot (cold boot fixes it).
+- The demo database must be reset when new tables are added (no migrations yet).

@@ -23,8 +23,11 @@ public class SubscriptionsController(SubscriptionService subs) : ApiController
     }
 
     [HttpPost("{id:int}/cancel")]
-    public async Task<IActionResult> Cancel(int id) =>
-        await subs.CancelAsync(UserId, id) ? NoContent() : NotFound(new { error = "No active subscription found." });
+    public async Task<ActionResult<CancelResultDto>> Cancel(int id)
+    {
+        var (ok, result, error) = await subs.CancelAsync(UserId, id);
+        return ok ? Ok(result) : Conflict(new { error });
+    }
 }
 
 /// <summary>Receives PayFast's server-to-server notification (ITN). The app is never trusted to say a payment succeeded.</summary>
@@ -82,6 +85,14 @@ public class PayFastController(
 [Route("api/dev")]
 public class DevController(SubscriptionService subs, Microsoft.Extensions.Hosting.IHostEnvironment env, Data.AppDbContext db) : ApiController
 {
+    /// <summary>Throws on purpose so the error logging and admin alerts can be demonstrated and tested.</summary>
+    [HttpGet("boom")]
+    public IActionResult Boom()
+    {
+        if (!env.IsDevelopment()) return NotFound();
+        throw new InvalidOperationException("Test error triggered from /api/dev/boom");
+    }
+
     [HttpPost("simulate-payment/{subscriptionId:int}")]
     public async Task<IActionResult> SimulatePayment(int subscriptionId)
     {

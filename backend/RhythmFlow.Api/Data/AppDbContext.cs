@@ -15,6 +15,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ClassSession> Classes => Set<ClassSession>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<JournalEntry> Journal => Set<JournalEntry>();
+    public DbSet<PasswordResetCode> PasswordResets => Set<PasswordResetCode>();
+    public DbSet<AppNotification> Notifications => Set<AppNotification>();
+    public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
 
     // Store and read every timestamp as UTC so the API always serialises them with a trailing "Z".
     protected override void ConfigureConventions(ModelConfigurationBuilder c)
@@ -63,6 +66,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.Status).HasMaxLength(20);
             e.HasIndex(x => x.UserId);
             e.HasIndex(x => x.ClassId);
+            // A user can hold at most one live booking per class, even if two requests arrive at the same moment.
+            e.HasIndex(x => new { x.UserId, x.ClassId }).IsUnique().HasFilter("\"Status\" = 'BOOKED'");
+        });
+        b.Entity<PasswordResetCode>().HasIndex(x => new { x.UserId, x.CreatedAt });
+        b.Entity<AppNotification>().HasIndex(x => new { x.UserId, x.CreatedAt });
+        b.Entity<ErrorLog>(e =>
+        {
+            e.HasIndex(x => x.Fingerprint);
+            e.HasIndex(x => x.LastSeen);
         });
     }
 }

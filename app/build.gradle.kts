@@ -18,14 +18,19 @@ android {
     }
 
     buildTypes {
+        // Point the app at any API with:  gradlew assembleDebug -PapiBaseUrl=https://your-app.azurewebsites.net/
+        // Without the flag, debug builds use 10.0.2.2, the emulator's alias for the PC running the API.
         debug {
-            // 10.0.2.2 is the emulator's alias for the PC running the API (see backend/README.md).
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:5080/\"")
+            val base = (project.findProperty("apiBaseUrl") as String?) ?: "http://10.0.2.2:5080/"
+            buildConfigField("String", "API_BASE_URL", "\"$base\"")
+            // The "simulate payment" shortcut only exists for a local API (the hosted API does not offer it).
+            buildConfigField("boolean", "SIMULATE_PAYMENT", base.contains("10.0.2.2").toString())
         }
         release {
             isMinifyEnabled = false
-            // Replace with the deployed HTTPS address of the API before release.
-            buildConfigField("String", "API_BASE_URL", "\"https://api.example.com/\"")
+            val base = (project.findProperty("apiBaseUrl") as String?) ?: "https://api.example.com/"
+            buildConfigField("String", "API_BASE_URL", "\"$base\"")
+            buildConfigField("boolean", "SIMULATE_PAYMENT", "false")
         }
     }
 

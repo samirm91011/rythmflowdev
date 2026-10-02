@@ -160,7 +160,7 @@ fun PaymentScreen(subId: Int, session: SessionViewModel, onDone: () -> Unit, onB
                 SecondaryButton("Back", onClick = onBack)
             }
         }
-        if (BuildConfig.DEBUG && status != "ACTIVE") {
+        if (BuildConfig.SIMULATE_PAYMENT && status != "ACTIVE") {
             VSpace(24)
             HorizontalDivider(color = Brand.LightGrey)
             VSpace(12)

@@ -1,0 +1,89 @@
+name: Deploy
+
+# Runs when code is merged into main (or when started by hand from the Actions tab).
+# 1. builds and tests the API  2. deploys it to Azure App Service  3. checks the live /health address
+# 4. builds a demo APK that points at the live API.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  build-api:
+    name: Build and test API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: dotnet restore backend/RhythmFlow.sln
+      - run: dotnet build backend/RhythmFlow.sln --no-restore -c Release
+      - run: dotnet test backend/RhythmFlow.sln --no-build -c Release
+
+      - name: Publish
+        run: dotnet publish backend/RhythmFlow.Api/RhythmFlow.Api.csproj -c Release -o publish --no-restore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-package
+          path: publish
+
+  deploy-api:
+    name: Deploy API to Azure
+    needs: build-api
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: api-package
+          path: publish
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: publish
+
+      - name: Wait for the live API to answer /health
+        run: |
+          for i in $(seq 1 18); do
+            if curl -fsS "${{ vars.AZURE_API_URL }}/health"; then echo; echo "API is healthy"; exit 0; fi
+            echo "not ready yet ($i/18)"; sleep 10
+          done
+          echo "API did not become healthy"; exit 1
+
+  build-apk:
+    name: Build demo APK for the live API
+    needs: deploy-api
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Accept Android SDK licences
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - run: chmod +x gradlew
+
+      - name: Build APK pointing at the live API
+        run: ./gradlew :app:assembleDebug --no-daemon -PapiBaseUrl="${{ vars.AZURE_API_URL }}/"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rhythm-and-flow-demo-apk
+          path: app/build/outputs/apk/debug/app-debug.apk

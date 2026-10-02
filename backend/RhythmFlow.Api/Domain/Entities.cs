@@ -34,6 +34,8 @@ public class User
     public string AccountStatus { get; set; } = "ACTIVE";
     public string About { get; set; } = "";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    /// <summary>Changes when the password changes or the account is disabled, which invalidates old login tokens.</summary>
+    public string SecurityStamp { get; set; } = Guid.NewGuid().ToString("N");
 }
 
 public class SubscriptionPlan
@@ -148,4 +150,52 @@ public class JournalEntry
     public string Mood { get; set; } = "";
     public string Text { get; set; } = "";
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public class PasswordResetCode
+{
+    public int Id { get; set; }
+    public Guid UserId { get; set; }
+    public string CodeHash { get; set; } = "";
+    public DateTime ExpiresAt { get; set; }
+    public int Attempts { get; set; }
+    public DateTime? UsedAt { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>An in-app notification. The app also shows these as system notifications.</summary>
+public class AppNotification
+{
+    public int Id { get; set; }
+    public Guid UserId { get; set; }
+    /// <summary>BOOKING, CLASS, SUBSCRIPTION, PAYMENT, ADMIN_ERROR, INFO</summary>
+    public string Kind { get; set; } = "INFO";
+    public string Title { get; set; } = "";
+    public string Body { get; set; } = "";
+    /// <summary>App screen to open when tapped (e.g. "bookings", "subscription", "admin/errors").</summary>
+    public string? Route { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ReadAt { get; set; }
+}
+
+/// <summary>A de-duplicated error report from the API or the app, for administrators to review.</summary>
+public class ErrorLog
+{
+    public int Id { get; set; }
+    /// <summary>API or APP</summary>
+    public string Source { get; set; } = "API";
+    public string Fingerprint { get; set; } = "";
+    public string Message { get; set; } = "";
+    public string Details { get; set; } = "";
+    public string? Route { get; set; }
+    public Guid? UserId { get; set; }
+    public string? UserEmail { get; set; }
+    public string? AppVersion { get; set; }
+    public string? Device { get; set; }
+    public int Count { get; set; } = 1;
+    public DateTime FirstSeen { get; set; } = DateTime.UtcNow;
+    public DateTime LastSeen { get; set; } = DateTime.UtcNow;
+    public DateTime? LastNotified { get; set; }
+    /// <summary>NEW or RESOLVED</summary>
+    public string Status { get; set; } = "NEW";
 }

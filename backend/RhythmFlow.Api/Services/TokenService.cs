@@ -27,6 +27,7 @@ public class TokenService(Microsoft.Extensions.Options.IOptions<JwtOptions> opti
             new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(ClaimTypes.Role, user.Role),
             new Claim(ClaimTypes.Name, user.FullName),
+            new Claim("sv", user.SecurityStamp),
         };
         var token = new JwtSecurityToken(_o.Issuer, _o.Audience, claims,
             expires: DateTime.UtcNow.AddMinutes(_o.ExpiryMinutes), signingCredentials: creds);

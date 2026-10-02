@@ -79,6 +79,8 @@ public class PayFastService(Microsoft.Extensions.Options.IOptions<PayFastOptions
         Convert.ToHexString(MD5.HashData(Encoding.UTF8.GetBytes(s))).ToLowerInvariant();
 
     /// <summary>Matches PHP's urlencode(), which PayFast uses when computing signatures.</summary>
+    public static string UrlEncode(string value) => Encode(value);
+
     private static string Encode(string value)
     {
         var sb = new StringBuilder();
