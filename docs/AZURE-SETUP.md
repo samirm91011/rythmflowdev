@@ -13,6 +13,15 @@
 2. Search for **Subscriptions** (top search bar). You should see at least one subscription with status *Active*.
    - If the list is empty, or it says you cannot create resources: stop and tell Samir (we need the lecturer/IT to grant access, or we use a different plan).
 
+## Notes for an **Azure for Students** subscription (read before Part 1)
+Student subscriptions have extra limits. None of them is a dead end – use the workaround:
+- **Region is restricted.** If the portal says a region is "not available", "restricted" or shows `RequestDisallowedByAzure`, pick **any region the dropdown lets you select**. Closest to South Africa first: *South Africa North → UK South → West Europe → North Europe → Germany West Central → Sweden Central*. Use the **same region for the database and the web app**. Latency is not a problem for the demo.
+- **Basic (B1) web apps can show "no quota/capacity" in some regions.** Try another allowed region. Only as a last resort use the *Free F1* plan (it sleeps and is slow – tell Samir first).
+- **The credit is US$100 and nothing bills a card.** Check it under *Cost Management → Credits*. Expected cost for this setup: roughly US$20–30 per month (database B1ms ≈ US$13, web app B1 ≈ US$13), so it comfortably covers the demo. When the credit ends the resources stop; nothing is charged.
+- **If .NET 10 is not in the runtime list** (Part 3), or the database cannot be created in any allowed region: stop and tell Samir. There are two fallbacks (a small Azure virtual machine running the same stack, or deploying the app as a container) – do **not** pick an older .NET version.
+- **Who adds GitHub secrets:** only the repository *owner* (Samir) can. You send him the publish profile (Part 5, step 1) privately and the app name; he adds them. You do not need to touch GitHub settings.
+- **Never put passwords in chat messages, screenshots or GitHub.** The repository is **public**.
+
 ## Part 1 – Resource group
 1. Search **Resource groups** → **Create**.
 2. Subscription: the campus one. Name: `rg-rhythmflow`. Region: **South Africa North** (if it isn't allowed, choose **West Europe**; use the *same region for everything below*).
