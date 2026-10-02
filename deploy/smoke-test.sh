@@ -42,7 +42,8 @@ EMAIL="smoke$STAMP@example.com"; USERN="smoke$STAMP"; PASSWORD="Smoke-Test-$STAM
 echo "== Service =="
 eq "health endpoint answers 200" 200 "$(call GET /health)"
 has "health says ok" '"status":"ok"' "$(cat "$BODY")"
-eq "API documentation page (/docs) answers 200" 200 "$(call GET /docs)"
+# /docs redirects to /docs/v1 (the interactive documentation page), so follow the redirect
+eq "API documentation page (/docs) loads" 200 "$(curl -sS -m 30 -L -o /dev/null -w '%{http_code}' "$BASE/docs" 2>/dev/null || echo 000)"
 eq "OpenAPI document answers 200" 200 "$(call GET /openapi/v1.json)"
 
 echo "== Plans =="
