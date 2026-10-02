@@ -44,7 +44,15 @@ Facts (from Render's docs, checked 2026-10-02):
 - Running the API from the laptop (Smart App Control blocks it; a laptop is also a single point of failure at the demo).
 - Free .NET shared hosts with no PostgreSQL / old .NET versions.
 
+## DECISION (2026-10-02): xneelo Cloud
+Render and Azure ruled out by Samir (Azure subscription removed; xneelo is South African, rand-priced and billed by the hour).
+- Package: **s-g-1cpu-2gb + 30 GB Premium boot volume, Ubuntu 24.04** ≈ R157/month ≈ R5.20/day.
+- The xneelo *Volume Plan* is shared PHP/MySQL hosting and cannot run this .NET API – it is not used.
+- Everything needed is in the repo: `deploy/` (compose stack, Caddy HTTPS, server setup, deploy, backup and smoke-test scripts), `.github/workflows/stack-test.yml` (builds the real container + PostgreSQL, tests every feature, load-tests and measures memory) and the `deploy-vps` job in `deploy.yml`.
+- Step-by-step: `docs/XNEELO-SETUP.md`.
+
 ## Decision log
 | Date | Decision |
 |---|---|
+| 2026-10-02 | **xneelo Cloud chosen** (Ubuntu VPS, Docker, Caddy, PostgreSQL). Render/Azure not used. |
 | 2026-10-02 | Azure subscription lost. Try Azure for Students; Render + Brevo prepared as fallback (Dockerfile, `render.yaml`, deploy workflow, URL-style DB connection strings, Brevo email option). |

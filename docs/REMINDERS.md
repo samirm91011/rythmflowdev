@@ -34,6 +34,12 @@ Samir: read this before every demo and before launch. Claude keeps this list up 
 | 26 | Public API docs page `/docs` and `/openapi/v1.json` are open to anyone | Handy for the lecturer | Restrict or remove for production if the client prefers | `Program.cs` |
 | 27 | Pre-warm the free host before the demo (open `/health` 5+ minutes earlier) | — | — | browser |
 
+| 28 | xneelo Cloud instance bills **every hour it exists** (≈R5.20/day incl. disk) | Running for the demo | **Delete the instance AND its volume after the presentation** (or keep it for the client's pilot) | xneelo Cloud console |
+| 29 | Server SSH key `xneelo_rhythmflow` (private file on Samir's PC, also stored as GitHub secret `VPS_SSH_KEY`) | Team key | Create a new key pair for the client; remove ours from the server and from GitHub secrets | PC, server, GitHub |
+| 30 | HTTPS address `<ip>.sslip.io` (if used) | IP-based demo address | Real domain such as `api.clientdomain.co.za` (A record → server IP), then update `API_DOMAIN`, `PayFast__PublicBaseUrl`, GitHub variable `AZURE_API_URL` and rebuild the app | DNS + server `.env` + GitHub |
+| 31 | The server's `/opt/rhythmflow/.env` holds every live secret | Team values | Client's values; keep file mode 600; never copy it into chat/email | Server |
+| 32 | Live smoke test creates a throw-away `smoke…@example.com` customer on each deploy | Harmless demo clutter | Remove the smoke step (or add cleanup) before the real launch; delete those accounts | `deploy.yml` / database |
+
 ## B. Before every demo
 - API reachable (hosted: open `/health`); database reset to demo data; PayFast sandbox login works; email sending works.
 - Fresh demo customer account with no subscription (to show the paywall) + one subscribed customer + admin.

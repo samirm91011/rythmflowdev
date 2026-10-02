@@ -3,7 +3,8 @@ name: Deploy
 # Runs when code is merged into main (or when started by hand from the Actions tab).
 # 1. builds and tests the API  2. deploys it  3. waits for the live /health address  4. builds a demo APK for the live API.
 #
-# Which host is used is chosen by the repository VARIABLE  DEPLOY_TARGET :  "render" or "azure" (default azure).
+# Which host is used is chosen by the repository VARIABLE  DEPLOY_TARGET :  "vps" (xneelo), "render" or "azure" (default azure).
+#   vps   : needs secrets VPS_HOST, VPS_USER (rfdeploy), VPS_SSH_KEY; variable AZURE_API_URL (the live https address)
 #   render: needs secret RENDER_DEPLOY_HOOK_URL, variable AZURE_API_URL (the live https address, name kept for both hosts)
 #   azure : needs secret AZURE_WEBAPP_PUBLISH_PROFILE, variables AZURE_WEBAPP_NAME and AZURE_API_URL
 # See docs/HOSTING-OPTIONS.md.
@@ -42,7 +43,7 @@ jobs:
   deploy-azure:
     name: Deploy API to Azure App Service
     needs: build-api
-    if: ${{ vars.DEPLOY_TARGET != 'render' }}
+    if: ${{ vars.DEPLOY_TARGET != 'render' && vars.DEPLOY_TARGET != 'vps' }}
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -66,6 +67,64 @@ jobs:
           done
           echo "API did not become healthy"; exit 1
 
+  deploy-vps:
+    name: Deploy API to the xneelo server
+    needs: build-api
+    if: ${{ vars.DEPLOY_TARGET == 'vps' }}
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out the image name (lower case, as GitHub's container registry requires)
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/rhythmflow-api" >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push the API image
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          file: backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+
+      - name: Set up SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Copy the stack files to the server
+        run: |
+          scp -i ~/.ssh/id_deploy deploy/docker-compose.yml deploy/Caddyfile deploy/deploy.sh deploy/backup.sh deploy/smoke-test.sh \
+              "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/rhythmflow/"
+
+      - name: Deploy on the server
+        run: |
+          ssh -i ~/.ssh/id_deploy "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "chmod +x /opt/rhythmflow/*.sh && echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin && cd /opt/rhythmflow && API_IMAGE=${{ env.IMAGE }}:${{ github.sha }} ./deploy.sh; rc=\$?; docker logout ghcr.io; exit \$rc"
+
+      - name: Check the live address from outside
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS "${{ vars.AZURE_API_URL }}/health"; then echo; echo "Live API is healthy"; exit 0; fi
+            echo "not reachable yet ($i/20)"; sleep 10
+          done
+          exit 1
+
+      - name: Smoke test the live server (safe checks only)
+        run: bash deploy/smoke-test.sh "${{ vars.AZURE_API_URL }}"
   deploy-render:
     name: Deploy API to Render
     needs: build-api
@@ -87,8 +146,8 @@ jobs:
 
   build-apk:
     name: Build demo APK for the live API
-    needs: [deploy-azure, deploy-render]
-    if: ${{ always() && (needs.deploy-azure.result == 'success' || needs.deploy-render.result == 'success') }}
+    needs: [deploy-azure, deploy-render, deploy-vps]
+    if: ${{ always() && (needs.deploy-azure.result == 'success' || needs.deploy-render.result == 'success' || needs.deploy-vps.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
