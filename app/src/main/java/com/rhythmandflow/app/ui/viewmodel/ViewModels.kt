@@ -75,6 +75,12 @@ class SessionViewModel(private val c: AppContainer) : ViewModel() {
             is Outcome.Fail -> r.message
         }
 
+    suspend fun changePassword(current: String, new: String): String? =
+        when (val r = repo.changePassword(current, new)) {
+            is Outcome.Ok -> { _state.value = SessionState.SignedIn(r.value.user); null }
+            is Outcome.Fail -> r.message
+        }
+
     fun signOut() {
         repo.signOut()
         _subs.value = emptyList()
@@ -219,10 +225,8 @@ class PlansViewModel(private val c: AppContainer) : ViewModel() {
         return r
     }
 
-    suspend fun cancel(subId: Int): String? = when (val r = repo.cancelSubscription(subId)) {
-        is Outcome.Ok -> { refreshSubs(); null }
-        is Outcome.Fail -> r.message
-    }
+    suspend fun cancel(subId: Int): Outcome<CancelResult> =
+        repo.cancelSubscription(subId).also { if (it is Outcome.Ok) refreshSubs() }
 
     suspend fun simulatePayment(subId: Int): String? = when (val r = repo.simulatePayment(subId)) {
         is Outcome.Ok -> null

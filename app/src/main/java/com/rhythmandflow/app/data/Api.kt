@@ -15,12 +15,15 @@ interface Api {
     @POST("api/auth/login") suspend fun login(@Body body: LoginRequest): AuthResponse
     @GET("api/auth/me") suspend fun me(): User
     @PUT("api/auth/me") suspend fun updateProfile(@Body body: UpdateProfileRequest): User
+    @POST("api/auth/forgot-password") suspend fun forgotPassword(@Body body: ForgotPasswordRequest): MessageResponse
+    @POST("api/auth/reset-password") suspend fun resetPassword(@Body body: ResetPasswordRequest): MessageResponse
+    @POST("api/auth/change-password") suspend fun changePassword(@Body body: ChangePasswordRequest): AuthResponse
 
     // ---- Plans & subscriptions ----
     @GET("api/plans") suspend fun plans(): List<Plan>
     @GET("api/subscriptions") suspend fun subscriptions(): List<Subscription>
     @POST("api/subscriptions/checkout") suspend fun checkout(@Body body: CheckoutRequest): CheckoutResponse
-    @POST("api/subscriptions/{id}/cancel") suspend fun cancelSubscription(@Path("id") id: Int): Response<Unit>
+    @POST("api/subscriptions/{id}/cancel") suspend fun cancelSubscription(@Path("id") id: Int): CancelResult
     @POST("api/dev/simulate-payment/{id}") suspend fun simulatePayment(@Path("id") id: Int): Response<Unit>
 
     // ---- Content ----

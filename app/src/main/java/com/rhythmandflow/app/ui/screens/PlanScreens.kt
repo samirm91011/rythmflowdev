@@ -179,6 +179,8 @@ fun SubscriptionScreen(session: SessionViewModel, onBack: () -> Unit, onPlans: (
     val subs by vm.subscriptions.collectAsState()
     val scope = rememberCoroutineScope()
     var confirm by remember { mutableStateOf<Subscription?>(null) }
+    var cancelledMessage by remember { mutableStateOf<String?>(null) }
+    var cancelling by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { vm.refreshSubs() }
 
     Column(Modifier.fillMaxSize()) {
@@ -215,14 +217,30 @@ fun SubscriptionScreen(session: SessionViewModel, onBack: () -> Unit, onPlans: (
         AlertDialog(
             onDismissRequest = { confirm = null },
             title = { Text("Cancel your subscription?") },
-            text = { Text("You'll keep access until ${formatDate(s.endDate)}. To stop future PayFast charges, please also cancel the recurring payment from your PayFast account or contact support.") },
+            text = { Text("We'll tell PayFast to stop your monthly payments. You'll keep access to your plan until ${formatDate(s.endDate)}.") },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(enabled = !cancelling, onClick = {
                     confirm = null
-                    scope.launch { notify(vm.cancel(s.id) ?: "Subscription cancelled."); session.refreshSubscriptions() }
+                    cancelling = true
+                    scope.launch {
+                        when (val r = vm.cancel(s.id)) {
+                            is Outcome.Ok -> { cancelledMessage = r.value.message; session.refreshSubscriptions() }
+                            is Outcome.Fail -> notify(r.message)
+                        }
+                        cancelling = false
+                    }
                 }) { Text("Cancel subscription", color = Brand.Error) }
             },
             dismissButton = { TextButton(onClick = { confirm = null }) { Text("Keep it") } },
+        )
+    }
+
+    cancelledMessage?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { cancelledMessage = null },
+            title = { Text("Subscription cancelled") },
+            text = { Text(msg) },
+            confirmButton = { TextButton(onClick = { cancelledMessage = null }) { Text("OK") } },
         )
     }
 }

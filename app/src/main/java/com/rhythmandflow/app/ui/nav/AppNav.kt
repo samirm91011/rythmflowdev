@@ -77,7 +77,10 @@ private fun AuthGraph(session: SessionViewModel, notify: (String) -> Unit) {
     val nav = rememberNavController()
     NavHost(nav, startDestination = "welcome") {
         composable("welcome") { WelcomeScreen(onStart = { nav.navigate("signin") }) }
-        composable("signin") { SignInScreen(session, onSignUp = { nav.navigate("signup") }, notify = notify) }
+        composable("signin") { SignInScreen(session, onSignUp = { nav.navigate("signup") }, onForgot = { nav.navigate("forgot") }, notify = notify) }
+        composable("forgot") {
+            ForgotPasswordScreen(onBack = { nav.popBackStack() }, onDone = { msg -> nav.popBackStack("signin", false); notify(msg) })
+        }
         composable("signup") { SignUpScreen(session, onBack = { nav.popBackStack() }, onLogin = { nav.popBackStack("signin", false) }) }
     }
 }
@@ -161,6 +164,7 @@ private fun MainGraph(session: SessionViewModel, notify: (String) -> Unit) {
 
             // ---- Profile ----
             composable("edit_profile") { EditProfileScreen(session, onBack = back, notify = notify) }
+            composable("change_password") { ChangePasswordScreen(session, onBack = back, notify = notify) }
             composable("settings") { SettingsScreen(onBack = back, onNavigate = go, onSignOut = { session.signOut() }) }
 
             // ---- Admin ----

@@ -187,6 +187,7 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, onSignOut: 
         ScreenHeader("Settings", onBack = onBack)
         Column(Modifier.vScroll().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             NavRow(Icons.Default.Person, "Account", "Personal information") { onNavigate("edit_profile") }
+            NavRow(Icons.Default.Lock, "Password", "Change your password") { onNavigate("change_password") }
             NavRow(Icons.Default.CreditCard, "Subscription", "Plan and billing") { onNavigate("subscription") }
             NavRow(Icons.Default.Notifications, "Notifications", "Manage your preferences") {
                 dialog = "Notifications" to "Push notifications aren't switched on yet. We'll let you know here when class reminders arrive."

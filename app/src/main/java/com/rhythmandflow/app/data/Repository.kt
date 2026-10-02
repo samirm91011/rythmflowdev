@@ -76,6 +76,12 @@ class Repository(private val api: Api, private val tokens: TokenStore) {
     suspend fun register(name: String, username: String, email: String, password: String) =
         call { api.register(RegisterRequest(name, username, email, password)) }
             .also { if (it is Outcome.Ok) tokens.token = it.value.token }
+    suspend fun forgotPassword(email: String) = call { api.forgotPassword(ForgotPasswordRequest(email.trim())) }
+    suspend fun resetPassword(email: String, code: String, newPassword: String) =
+        call { api.resetPassword(ResetPasswordRequest(email.trim(), code.trim(), newPassword)) }
+    /** Changing the password signs other devices out, so the server returns a fresh token for this one. */
+    suspend fun changePassword(current: String, new: String) = call { api.changePassword(ChangePasswordRequest(current, new)) }
+        .also { if (it is Outcome.Ok) tokens.token = it.value.token }
     suspend fun me() = call { api.me() }
     suspend fun updateProfile(name: String, email: String, about: String?) = call { api.updateProfile(UpdateProfileRequest(name, email, about)) }
     fun signOut() = tokens.clear()
@@ -84,7 +90,7 @@ class Repository(private val api: Api, private val tokens: TokenStore) {
     suspend fun plans() = call { api.plans() }
     suspend fun subscriptions() = call { api.subscriptions() }
     suspend fun checkout(planId: Int) = call { api.checkout(CheckoutRequest(planId)) }
-    suspend fun cancelSubscription(id: Int) = callUnit { api.cancelSubscription(id) }
+    suspend fun cancelSubscription(id: Int) = call { api.cancelSubscription(id) }
     suspend fun simulatePayment(id: Int) = callUnit { api.simulatePayment(id) }
 
     // ---- Content ----

@@ -17,6 +17,10 @@ data class AuthResponse(val token: String, val user: User)
 data class RegisterRequest(val fullName: String, val username: String, val email: String, val password: String)
 data class LoginRequest(val identifier: String, val password: String)
 data class UpdateProfileRequest(val fullName: String, val email: String, val about: String?)
+data class ForgotPasswordRequest(val email: String)
+data class ResetPasswordRequest(val email: String, val code: String, val newPassword: String)
+data class ChangePasswordRequest(val currentPassword: String, val newPassword: String)
+data class MessageResponse(val message: String?)
 
 data class Plan(
     val id: Int,
@@ -41,6 +45,7 @@ data class Subscription(
 )
 
 data class CheckoutRequest(val planId: Int)
+data class CancelResult(val message: String, val cancelledWithPayFast: Boolean)
 data class CheckoutResponse(val subscriptionId: Int, val paymentUrl: String)
 
 data class Programme(val id: Int, val name: String, val description: String, val minTier: Int, val locked: Boolean, val lessonCount: Int)
