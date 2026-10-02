@@ -40,6 +40,8 @@ Samir: read this before every demo and before launch. Claude keeps this list up 
 | 31 | The server's `/opt/rhythmflow/.env` holds every live secret | Team values | Client's values; keep file mode 600; never copy it into chat/email | Server |
 | 32 | Live smoke test creates a throw-away `smoke…@example.com` customer on each deploy | Harmless demo clutter | Remove the smoke step (or add cleanup) before the real launch; delete those accounts | `deploy.yml` / database |
 
+| 33 | **Code lives in Samir's personal private repo** `samirm91011/rythmflowdev` for now. The lecturer will provide a **campus repo** to use for submission | Personal private repo | Move to the campus repo: add it as a second remote (`git remote add campus <url>`), push all branches (`git push campus --all`), then **re-create the GitHub Actions secrets/variables and branch rules there** (secrets do NOT travel with the code), re-check the workflows run, and update `AZURE_API_URL`/`VPS_*` settings. Decide which repo is the submission and say so in the presentation | GitHub |
+
 ## B. Before every demo
 - API reachable (hosted: open `/health`); database reset to demo data; PayFast sandbox login works; email sending works.
 - Fresh demo customer account with no subscription (to show the paywall) + one subscribed customer + admin.
