@@ -86,7 +86,8 @@ Tick *"Deployment slot setting"* on none of them. Mark the secret ones as normal
 2. Go to the GitHub repository **https://github.com/samirm91011/rythmflowdev** (you need to be added as a collaborator by Samir, with *Write* or *Admin* access, or Samir does this step).
 3. **Settings → Secrets and variables → Actions → Secrets → New repository secret**
    - Name: `AZURE_WEBAPP_PUBLISH_PROFILE`  Value: paste the text you copied. Save.
-4. Same page → **Variables** tab → **New repository variable**, add two:
+4. Same page → **Variables** tab → **New repository variable**, add three:
+   - `DEPLOY_TARGET` = `azure`  (this switches Azure deployment on; without it nothing is deployed)
    - `AZURE_WEBAPP_NAME` = the exact app name from Part 3 (just the name, e.g. `rhythmflow-api-g11`)
    - `AZURE_API_URL` = `https://<app name>.azurewebsites.net` (no slash at the end)
 5. **Settings → Environments → New environment** → name `production` → Save (optional: add Samir as a required reviewer).

@@ -3,7 +3,7 @@ name: Deploy
 # Runs when code is merged into main (or when started by hand from the Actions tab).
 # 1. builds and tests the API  2. deploys it  3. waits for the live /health address  4. builds a demo APK for the live API.
 #
-# Which host is used is chosen by the repository VARIABLE  DEPLOY_TARGET :  "vps" (xneelo), "render" or "azure" (default azure).
+# Which host is used is chosen by the repository VARIABLE  DEPLOY_TARGET :  "azure", "vps" (xneelo) or "render". If it is not set, nothing is deployed (safe default).
 #   vps   : needs secrets VPS_HOST, VPS_USER (rfdeploy), VPS_SSH_KEY; variable AZURE_API_URL (the live https address)
 #   render: needs secret RENDER_DEPLOY_HOOK_URL, variable AZURE_API_URL (the live https address, name kept for both hosts)
 #   azure : needs secret AZURE_WEBAPP_PUBLISH_PROFILE, variables AZURE_WEBAPP_NAME and AZURE_API_URL
@@ -43,7 +43,7 @@ jobs:
   deploy-azure:
     name: Deploy API to Azure App Service
     needs: build-api
-    if: ${{ vars.DEPLOY_TARGET != 'render' && vars.DEPLOY_TARGET != 'vps' }}
+    if: ${{ vars.DEPLOY_TARGET == 'azure' }}
     runs-on: ubuntu-latest
     environment: production
     steps:
