@@ -25,6 +25,11 @@ Living record of what exists, what changed, and what is left. Newest entries at 
 - Earlier: cloud-neutral backend (SQLite locally, PostgreSQL by config); videos are placeholder public clips; plans R99/R199/R299 are placeholders; Shop is a "coming soon" screen.
 
 ## Work log
+### 2026-10-03
+- **Visual refresh done (Feature 6):** brand fonts (Cormorant Garamond headings, Open Sans body), white cards with soft shadows, gradient pill buttons with press feedback, selected-state mood tiles, skeleton loading, screen transitions. Checked on the emulator in demo mode (Home, Move, Classes, Journal, You).
+- **Account deletion and data export done (Feature 11):** API `GET /api/account/export` and `POST /api/account/delete` (password re-check, active PayFast subscription cancelled first, personal content erased, payment records kept anonymised, last admin protected), public `/terms` and `/privacy` draft pages, Settings rows in the app. 8 new unit tests (run in GitHub Actions). Verified in demo mode on the emulator: wrong password is refused, data share sheet opens.
+- Demo mode (`-PdemoMode=true`) added so every screen can be checked without the server.
+
 ### 2026-10-02
 - PayFast sandbox merchant details added to `appsettings.Local.json`; verified live: PayFast sandbox accepts signed one-off and monthly-subscription requests built with our passphrase (this also proves our signing code is correct).
 - Google sign-in removed from the backend (service, package, user fields).

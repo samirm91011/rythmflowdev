@@ -107,6 +107,17 @@ class DemoApi : Api {
         return AuthResponse("demo-token", user)
     }
 
+    override suspend fun exportData(): okhttp3.ResponseBody {
+        pause()
+        val json = """{"exportedAt":"demo","profile":{"fullName":"${user.fullName}","email":"${user.email}"},"note":"Demo data only."}"""
+        return json.toResponseBody("application/json".toMediaType())
+    }
+    override suspend fun deleteAccount(body: DeleteAccountRequest): MessageResponse {
+        pause()
+        if (body.password == "wrong") fail(400, "That password isn't right.")
+        return MessageResponse("Your account and personal data have been deleted.")
+    }
+
     // ---- plans & subscriptions
     override suspend fun plans(): List<Plan> { pause(); return plans }
     override suspend fun subscriptions(): List<Subscription> {

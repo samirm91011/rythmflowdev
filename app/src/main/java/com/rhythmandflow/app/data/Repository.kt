@@ -98,6 +98,8 @@ class Repository(private val api: Api, private val tokens: TokenStore, private v
     /** Changing the password signs other devices out, so the server returns a fresh token for this one. */
     suspend fun changePassword(current: String, new: String) = call { api.changePassword(ChangePasswordRequest(current, new)) }
         .also { if (it is Outcome.Ok) tokens.token = it.value.token }
+    suspend fun exportData() = call { api.exportData().use { it.string() } }
+    suspend fun deleteAccount(password: String) = call { api.deleteAccount(DeleteAccountRequest(password)) }
     suspend fun me() = call { api.me() }
     suspend fun updateProfile(name: String, email: String, about: String?) = call { api.updateProfile(UpdateProfileRequest(name, email, about)) }
     fun signOut() = tokens.clear()

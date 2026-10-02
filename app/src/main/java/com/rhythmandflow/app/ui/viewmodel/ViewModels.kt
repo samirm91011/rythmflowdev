@@ -81,6 +81,20 @@ class SessionViewModel(private val c: AppContainer) : ViewModel() {
             is Outcome.Fail -> r.message
         }
 
+    /** The person's data as JSON text, or an error message. */
+    suspend fun exportData(): Pair<String?, String?> =
+        when (val r = repo.exportData()) {
+            is Outcome.Ok -> r.value to null
+            is Outcome.Fail -> null to r.message
+        }
+
+    /** Deletes the account; on success the person is signed out. Returns an error message or null. */
+    suspend fun deleteAccount(password: String): String? =
+        when (val r = repo.deleteAccount(password)) {
+            is Outcome.Ok -> { signOut(); null }
+            is Outcome.Fail -> r.message
+        }
+
     fun signOut() {
         repo.signOut()
         com.rhythmandflow.app.notifications.NotificationSync.stop(c.app)

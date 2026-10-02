@@ -110,5 +110,7 @@ public record ErrorLogDto(
     int Id, string Source, string Message, string Details, string? Route, string? UserEmail, string? AppVersion,
     string? Device, int Count, DateTime FirstSeen, DateTime LastSeen, string Status);
 
+public record DeleteAccountRequest([Required] string Password);
+
 public record CancelResultDto(string Message, bool CancelledWithPayFast);
 

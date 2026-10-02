@@ -18,6 +18,8 @@ interface Api {
     @POST("api/auth/forgot-password") suspend fun forgotPassword(@Body body: ForgotPasswordRequest): MessageResponse
     @POST("api/auth/reset-password") suspend fun resetPassword(@Body body: ResetPasswordRequest): MessageResponse
     @POST("api/auth/change-password") suspend fun changePassword(@Body body: ChangePasswordRequest): AuthResponse
+    @GET("api/account/export") suspend fun exportData(): okhttp3.ResponseBody
+    @POST("api/account/delete") suspend fun deleteAccount(@Body body: DeleteAccountRequest): MessageResponse
 
     // ---- Plans & subscriptions ----
     @GET("api/plans") suspend fun plans(): List<Plan>

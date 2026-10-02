@@ -212,7 +212,7 @@ private fun MainGraph(session: SessionViewModel, notify: (String) -> Unit, pendi
             // ---- Profile ----
             composable("edit_profile") { EditProfileScreen(session, onBack = back, notify = notify) }
             composable("change_password") { ChangePasswordScreen(session, onBack = back, notify = notify) }
-            composable("settings") { SettingsScreen(onBack = back, onNavigate = go, onSignOut = { session.signOut() }) }
+            composable("settings") { SettingsScreen(session, onBack = back, onNavigate = go, onSignOut = { session.signOut() }) }
 
             // ---- Admin ----
             composable("admin") { AdminHomeScreen(onBack = back, onNavigate = go) }

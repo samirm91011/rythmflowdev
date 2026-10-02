@@ -70,6 +70,7 @@ builder.Services.AddOpenApi(o => o.AddDocumentTransformer((doc, _, _) =>
 builder.Services.AddSingleton<ErrorLogService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<PasswordResetService>();
+builder.Services.AddScoped<AccountService>();
 builder.Services.AddHttpClient();
 builder.Services.AddHttpClient("video", c => c.Timeout = TimeSpan.FromMinutes(30));
 builder.Services.AddControllers();

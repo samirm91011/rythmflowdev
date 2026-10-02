@@ -53,3 +53,6 @@ Samir: read this before every demo and before launch. Claude keeps this list up 
 - Azure: group member to follow `docs/AZURE-SETUP.md` and report back. (Samir)
 - GitHub: repo `samirm91011/rythmflowdev` given; Claude pushes only when Samir says "go". Repo owner must also add the secrets/variables and branch rules (`docs/GITHUB-SETUP.md`). (Samir)
 - Client answers: videos, pricing, classes, legal text, fonts, her PayFast account.
+| 34 | **Terms of Use and Privacy Policy are drafts** (served at `/terms` and `/privacy`, text in `LegalController`) with placeholders for the business name and e-mail | Draft text | Client (or a legal adviser) reviews and approves the wording; fill in the business name and contact e-mail | Before launch |
+| 35 | Heading font is Cormorant Garamond, a stand-in for the brand's Amaris (files not supplied) | Stand-in | Add the Amaris font file to `app/src/main/res/font/` and change `HeadingFont` in `Theme.kt` | Before launch |
+| 36 | Demo mode build (`-PdemoMode=true`) uses a fake in-app server for screenshots and tests | Off in normal builds | Never ship an APK built with demoMode | Release |
