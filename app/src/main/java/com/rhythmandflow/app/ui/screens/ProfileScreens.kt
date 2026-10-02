@@ -8,6 +8,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Email
@@ -189,9 +192,8 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, onSignOut: 
             NavRow(Icons.Default.Person, "Account", "Personal information") { onNavigate("edit_profile") }
             NavRow(Icons.Default.Lock, "Password", "Change your password") { onNavigate("change_password") }
             NavRow(Icons.Default.CreditCard, "Subscription", "Plan and billing") { onNavigate("subscription") }
-            NavRow(Icons.Default.Notifications, "Notifications", "Manage your preferences") {
-                dialog = "Notifications" to "Push notifications aren't switched on yet. We'll let you know here when class reminders arrive."
-            }
+            NavRow(Icons.Default.Notifications, "Notifications", "Your updates and alerts") { onNavigate("notifications") }
+            ReminderSwitchRow()
             NavRow(Icons.Default.Lock, "Privacy & Security", "Keep your data safe") {
                 dialog = "Privacy & Security" to "We only collect what the app needs to work: your name, email, subscription, progress, journal entries and bookings. Passwords are stored securely hashed, your login token is kept encrypted on this device, and card details are handled only by PayFast."
             }
@@ -214,5 +216,28 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, onSignOut: 
     dialog?.let { (t, body) ->
         AlertDialog(onDismissRequest = { dialog = null }, title = { Text(t) }, text = { Text(body) },
             confirmButton = { TextButton(onClick = { dialog = null }) { Text("OK") } })
+    }
+}
+
+/** Turns the "1 hour before class" reminder on or off for this phone. */
+@Composable
+private fun ReminderSwitchRow() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = container().localPrefs
+    var on by remember { mutableStateOf(com.rhythmandflow.app.notifications.ReminderScheduler.enabled(prefs)) }
+    SoftCard(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Alarm, null, tint = Brand.TealDeep)
+            Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
+                Text("Class reminders", style = MaterialTheme.typography.titleSmall)
+                Text("A notification 1 hour before each class you book", style = MaterialTheme.typography.bodySmall, color = Brand.Muted)
+            }
+            Switch(
+                checked = on,
+                onCheckedChange = { on = it; com.rhythmandflow.app.notifications.ReminderScheduler.setEnabled(context.applicationContext, prefs, it) },
+                modifier = Modifier.semantics { contentDescription = "Class reminders" },
+                colors = SwitchDefaults.colors(checkedTrackColor = Brand.TealDeep),
+            )
+        }
     }
 }

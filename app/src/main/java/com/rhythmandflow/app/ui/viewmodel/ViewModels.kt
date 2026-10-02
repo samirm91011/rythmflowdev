@@ -84,6 +84,7 @@ class SessionViewModel(private val c: AppContainer) : ViewModel() {
     fun signOut() {
         repo.signOut()
         com.rhythmandflow.app.notifications.NotificationSync.stop(c.app)
+        com.rhythmandflow.app.notifications.ReminderScheduler.cancelAll(c.app, c.localPrefs)
         c.localPrefs.putInt("last_notified_id", -1)
         _subs.value = emptyList()
         _state.value = SessionState.SignedOut
@@ -260,7 +261,11 @@ class ClassesViewModel(private val c: AppContainer) : ViewModel() {
             val bk = repo.bookings()
             _state.value = when {
                 cl is Outcome.Fail -> ClassesState(false, cl.message)
-                else -> ClassesState(false, null, (cl as Outcome.Ok).value, (bk as? Outcome.Ok)?.value ?: emptyList())
+                else -> {
+                    val bookings = (bk as? Outcome.Ok)?.value
+                    if (bookings != null) com.rhythmandflow.app.notifications.ReminderScheduler.sync(c.app, c.localPrefs, bookings)
+                    ClassesState(false, null, (cl as Outcome.Ok).value, bookings ?: emptyList())
+                }
             }
         }
     }
@@ -290,7 +295,9 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
     fun load() {
         viewModelScope.launch {
             val s = (repo.progressSummary() as? Outcome.Ok)?.value
-            val b = (repo.bookings() as? Outcome.Ok)?.value?.firstOrNull()
+            val allBookings = (repo.bookings() as? Outcome.Ok)?.value
+            if (allBookings != null) com.rhythmandflow.app.notifications.ReminderScheduler.sync(c.app, c.localPrefs, allBookings)
+            val b = allBookings?.firstOrNull()
             val unread = (repo.unreadCount() as? Outcome.Ok)?.value?.count ?: 0
             _state.value = HomeState(s, b, false, unread)
         }
