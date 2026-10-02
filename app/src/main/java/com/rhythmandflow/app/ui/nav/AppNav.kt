@@ -1,6 +1,12 @@
 package com.rhythmandflow.app.ui.nav
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.runtime.LaunchedEffect
+import com.rhythmandflow.app.ui.viewmodel.container
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -54,8 +60,11 @@ private val tabs = listOf(
     Tab("you", "You", Icons.Default.Person),
 )
 
+/** Screens a notification (or push message) is allowed to open. Anything else is ignored. */
+private val knownRoutes = setOf("home", "move", "classes", "journal", "you", "bookings", "plans", "subscription", "notifications", "admin", "admin/errors")
+
 @Composable
-fun AppRoot(session: SessionViewModel) {
+fun AppRoot(session: SessionViewModel, pendingRoute: String? = null, onRouteHandled: () -> Unit = {}) {
     val state by session.state.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -67,7 +76,7 @@ fun AppRoot(session: SessionViewModel) {
                 Image(painterResource(R.drawable.rf_logo_black), "Rhythm & Flow", Modifier.size(140.dp))
             }
             SessionState.SignedOut -> AuthGraph(session, notify)
-            is SessionState.SignedIn -> MainGraph(session, notify)
+            is SessionState.SignedIn -> MainGraph(session, notify, pendingRoute, onRouteHandled)
         }
     }
 }
@@ -86,11 +95,30 @@ private fun AuthGraph(session: SessionViewModel, notify: (String) -> Unit) {
 }
 
 @Composable
-private fun MainGraph(session: SessionViewModel, notify: (String) -> Unit) {
+private fun MainGraph(session: SessionViewModel, notify: (String) -> Unit, pendingRoute: String?, onRouteHandled: () -> Unit) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val route = backStack?.destination?.route
     val showBar = route in tabs.map { it.route }
+    val prefs = container().localPrefs
+
+    // Ask once (Android 13+) for permission to show notifications.
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= 33 && !prefs.getBool("asked_notification_permission")) {
+            prefs.putBool("asked_notification_permission", true)
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    // A tapped notification asks us to open a screen; only known screens are opened.
+    LaunchedEffect(pendingRoute, backStack != null) {
+        val r = pendingRoute
+        if (r != null && backStack != null) {
+            if (r in knownRoutes) { if (r in tabs.map { it.route }) nav.goTab(r) else nav.navigate(r) }
+            onRouteHandled()
+        }
+    }
 
     Scaffold(
         containerColor = Color.White,
@@ -123,6 +151,10 @@ private fun MainGraph(session: SessionViewModel, notify: (String) -> Unit) {
             composable("classes") { ClassesScreen(onBookings = { nav.navigate("bookings") }, notify = notify) }
             composable("journal") { JournalScreen(onLesson = { nav.navigate("lesson/$it") }, notify = notify) }
             composable("you") { YouScreen(session, onNavigate = go, onLesson = { nav.navigate("lesson/$it") }) }
+
+            composable("notifications") {
+                NotificationsScreen(onBack = back, onOpen = { r -> if (r in knownRoutes && r != "notifications") go(r) })
+            }
 
             // ---- Practice ----
             composable("rhythm") { RhythmTodayScreen(onBack = back, onNavigate = go) }

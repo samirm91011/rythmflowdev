@@ -23,7 +23,12 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.NightsStay
 import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -87,6 +92,12 @@ fun HomeScreen(session: SessionViewModel, onNavigate: (String) -> Unit, notify: 
     PageColumn {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Image(painterResource(R.drawable.rf_logo_black), "Rhythm & Flow", Modifier.size(52.dp))
+            Spacer(Modifier.weight(1f))
+            BadgedBox(badge = { if (state.unread > 0) Badge(containerColor = Brand.Tangerine) { Text("${state.unread}") } }) {
+                IconButton(onClick = { onNavigate("notifications") }) {
+                    Icon(Icons.Default.Notifications, if (state.unread > 0) "Notifications, ${state.unread} unread" else "Notifications")
+                }
+            }
         }
         Column(Modifier.padding(horizontal = 20.dp)) {
             Text("${greeting()}, $firstName", style = MaterialTheme.typography.headlineLarge)

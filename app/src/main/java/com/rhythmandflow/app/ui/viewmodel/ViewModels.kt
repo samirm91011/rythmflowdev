@@ -50,7 +50,7 @@ class SessionViewModel(private val c: AppContainer) : ViewModel() {
         viewModelScope.launch {
             if (!repo.hasToken) { _state.value = SessionState.SignedOut; return@launch }
             when (val r = repo.me()) {
-                is Outcome.Ok -> { _state.value = SessionState.SignedIn(r.value); refreshSubscriptions() }
+                is Outcome.Ok -> { _state.value = SessionState.SignedIn(r.value); refreshSubscriptions(); com.rhythmandflow.app.notifications.NotificationSync.start(c.app) }
                 // A network failure should not log the user out; only an auth failure does (handled via `unauthorized`).
                 is Outcome.Fail -> _state.value = SessionState.SignedOut
             }
@@ -59,7 +59,7 @@ class SessionViewModel(private val c: AppContainer) : ViewModel() {
 
     suspend fun login(identifier: String, password: String): String? =
         when (val r = repo.login(identifier.trim(), password)) {
-            is Outcome.Ok -> { _state.value = SessionState.SignedIn(r.value.user); refreshSubscriptions(); null }
+            is Outcome.Ok -> { _state.value = SessionState.SignedIn(r.value.user); refreshSubscriptions(); com.rhythmandflow.app.notifications.NotificationSync.start(c.app); null }
             is Outcome.Fail -> r.message
         }
 
@@ -83,6 +83,8 @@ class SessionViewModel(private val c: AppContainer) : ViewModel() {
 
     fun signOut() {
         repo.signOut()
+        com.rhythmandflow.app.notifications.NotificationSync.stop(c.app)
+        c.localPrefs.putInt("last_notified_id", -1)
         _subs.value = emptyList()
         _state.value = SessionState.SignedOut
     }
@@ -276,7 +278,7 @@ class ClassesViewModel(private val c: AppContainer) : ViewModel() {
 }
 
 // ============================================================ Home / journal / profile
-data class HomeState(val summary: ProgressSummary? = null, val nextBooking: Booking? = null, val loading: Boolean = true)
+data class HomeState(val summary: ProgressSummary? = null, val nextBooking: Booking? = null, val loading: Boolean = true, val unread: Int = 0)
 
 class HomeViewModel(private val c: AppContainer) : ViewModel() {
     private val repo = c.repository
@@ -289,7 +291,8 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
         viewModelScope.launch {
             val s = (repo.progressSummary() as? Outcome.Ok)?.value
             val b = (repo.bookings() as? Outcome.Ok)?.value?.firstOrNull()
-            _state.value = HomeState(s, b, false)
+            val unread = (repo.unreadCount() as? Outcome.Ok)?.value?.count ?: 0
+            _state.value = HomeState(s, b, false, unread)
         }
     }
 
@@ -370,4 +373,33 @@ class AdminViewModel(private val c: AppContainer) : ViewModel() {
     suspend fun createLesson(l: LessonUpsert) = after(repo.adminCreateLesson(l))
     suspend fun deleteLesson(id: Int) = after(repo.adminDeleteLesson(id))
     suspend fun updatePlan(id: Int, p: PlanUpsert) = after(repo.adminUpdatePlan(id, p))
+}
+
+// ============================================================ Notifications
+class NotificationsViewModel(private val c: AppContainer) : ViewModel() {
+    private val repo = c.repository
+    private val _items = MutableStateFlow(Load<List<AppNotification>>())
+    val items: StateFlow<Load<List<AppNotification>>> = _items.asStateFlow()
+
+    init { load() }
+
+    fun load() {
+        viewModelScope.launch {
+            when (val r = repo.notifications()) {
+                is Outcome.Ok -> _items.value = Load(false, null, r.value)
+                is Outcome.Fail -> _items.value = Load(false, r.message, _items.value.data)
+            }
+        }
+    }
+
+    fun markRead(id: Int) {
+        // show it as read straight away, then tell the server
+        _items.update { s -> s.copy(data = s.data?.map { if (it.id == id) it.copy(read = true) else it }) }
+        viewModelScope.launch { repo.markRead(listOf(id)) }
+    }
+
+    fun markAllRead() {
+        _items.update { s -> s.copy(data = s.data?.map { it.copy(read = true) }) }
+        viewModelScope.launch { repo.markRead(null) }
+    }
 }

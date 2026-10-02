@@ -13,7 +13,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 /** Hand-rolled dependency container (kept simple on purpose; no DI framework needed at this size). */
-class AppContainer(app: Application) {
+class AppContainer(val app: Application) {
     val tokenStore = TokenStore(app)
     val localPrefs = LocalPrefs(app)
 
@@ -50,5 +50,6 @@ class RhythmApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer(this)
+        com.rhythmandflow.app.notifications.Notifier.createChannels(this)
     }
 }

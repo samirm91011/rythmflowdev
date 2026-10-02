@@ -43,6 +43,14 @@ interface Api {
     @POST("api/classes/{id}/book") suspend fun book(@Path("id") id: Int): Booking
     @POST("api/bookings/{id}/cancel") suspend fun cancelBooking(@Path("id") id: Int): Response<Unit>
 
+    // ---- Notifications ----
+    @GET("api/notifications") suspend fun notifications(
+        @Query("afterId") afterId: Int? = null,
+        @Query("unreadOnly") unreadOnly: Boolean = false,
+    ): List<AppNotification>
+    @GET("api/notifications/unread-count") suspend fun unreadCount(): UnreadCount
+    @POST("api/notifications/read") suspend fun markRead(@Body body: MarkReadRequest): Response<Unit>
+
     // ---- Journal ----
     @GET("api/journal") suspend fun journal(): List<JournalEntry>
     @POST("api/journal") suspend fun addJournal(@Body body: JournalRequest): JournalEntry

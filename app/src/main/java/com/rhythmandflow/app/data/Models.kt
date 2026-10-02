@@ -100,6 +100,10 @@ data class Booking(
     val canCancel: Boolean,
 )
 
+data class AppNotification(val id: Int, val kind: String, val title: String, val body: String, val route: String?, val createdAt: String, val read: Boolean)
+data class MarkReadRequest(val ids: List<Int>?)
+data class UnreadCount(val count: Int)
+
 data class JournalRequest(val kind: String, val mood: String?, val text: String?)
 data class JournalEntry(val id: Int, val kind: String, val mood: String, val text: String, val createdAt: String)
 

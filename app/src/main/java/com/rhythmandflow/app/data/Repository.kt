@@ -107,6 +107,11 @@ class Repository(private val api: Api, private val tokens: TokenStore) {
     suspend fun book(classId: Int) = call { api.book(classId) }
     suspend fun cancelBooking(id: Int) = callUnit { api.cancelBooking(id) }
 
+    // ---- Notifications ----
+    suspend fun notifications(afterId: Int? = null, unreadOnly: Boolean = false) = call { api.notifications(afterId, unreadOnly) }
+    suspend fun unreadCount() = call { api.unreadCount() }
+    suspend fun markRead(ids: List<Int>?) = callUnit { api.markRead(MarkReadRequest(ids)) }
+
     // ---- Journal ----
     suspend fun journal() = call { api.journal() }
     suspend fun addJournal(kind: String, mood: String?, text: String?) = call { api.addJournal(JournalRequest(kind, mood, text)) }
