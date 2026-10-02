@@ -13,6 +13,7 @@ Living record of what exists, what changed, and what is left. Newest entries at 
 | Dropped | Google sign-in (decided 2026-10-02: not needed, extra setup). Per-user video watermark (decided out of scope). |
 
 ## Decisions
+- 2026-10-02 **Azure subscription removed by campus.** Host-neutral setup prepared: `backend/Dockerfile`, `render.yaml` (Render + free PostgreSQL), deploy workflow switchable by `DEPLOY_TARGET`, database URLs of the form `postgres://…` accepted, Brevo web-API email option (Render free blocks SMTP), interactive API docs at `/docs` (OpenAPI + Scalar; this is the "Swagger" style documentation page, not a host). Recommendation: try Azure for Students first, Render as fallback. Work is on branch `feature/hosting-and-api-docs` (local, not pushed).
 - 2026-10-02 **Presentation date: 7 Oct 2026.** Option A chosen: keep Smart App Control on; backend runs on Azure (App Service + PostgreSQL), built/tested by GitHub Actions. Samir's GitHub repo: `samirm91011/rythmflowdev`. A group member will set up Azure from `docs/AZURE-SETUP.md`.
 - 2026-10-02 Gmail account `rythmandflow12@gmail.com` (team test mailbox) configured for password-reset emails and admin error alerts.
 - 2026-10-02 Use the team's own PayFast sandbox, Gmail and test data now; switch to the client's details at launch.

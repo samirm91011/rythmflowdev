@@ -1,8 +1,12 @@
 name: Deploy
 
 # Runs when code is merged into main (or when started by hand from the Actions tab).
-# 1. builds and tests the API  2. deploys it to Azure App Service  3. checks the live /health address
-# 4. builds a demo APK that points at the live API.
+# 1. builds and tests the API  2. deploys it  3. waits for the live /health address  4. builds a demo APK for the live API.
+#
+# Which host is used is chosen by the repository VARIABLE  DEPLOY_TARGET :  "render" or "azure" (default azure).
+#   render: needs secret RENDER_DEPLOY_HOOK_URL, variable AZURE_API_URL (the live https address, name kept for both hosts)
+#   azure : needs secret AZURE_WEBAPP_PUBLISH_PROFILE, variables AZURE_WEBAPP_NAME and AZURE_API_URL
+# See docs/HOSTING-OPTIONS.md.
 on:
   push:
     branches: [main]
@@ -35,9 +39,10 @@ jobs:
           name: api-package
           path: publish
 
-  deploy-api:
-    name: Deploy API to Azure
+  deploy-azure:
+    name: Deploy API to Azure App Service
     needs: build-api
+    if: ${{ vars.DEPLOY_TARGET != 'render' }}
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -61,9 +66,29 @@ jobs:
           done
           echo "API did not become healthy"; exit 1
 
+  deploy-render:
+    name: Deploy API to Render
+    needs: build-api
+    if: ${{ vars.DEPLOY_TARGET == 'render' }}
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Ask Render to build and deploy the latest commit
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+      - name: Wait for the live API to answer /health (a free Render service can take a few minutes to build and wake)
+        run: |
+          sleep 60
+          for i in $(seq 1 40); do
+            if curl -fsS "${{ vars.AZURE_API_URL }}/health"; then echo; echo "API is healthy"; exit 0; fi
+            echo "not ready yet ($i/40)"; sleep 15
+          done
+          echo "API did not become healthy"; exit 1
+
   build-apk:
     name: Build demo APK for the live API
-    needs: deploy-api
+    needs: [deploy-azure, deploy-render]
+    if: ${{ always() && (needs.deploy-azure.result == 'success' || needs.deploy-render.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

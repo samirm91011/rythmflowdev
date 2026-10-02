@@ -1,3 +1,4 @@
+using Scalar.AspNetCore;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -16,7 +17,7 @@ cfg.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
 builder.Services.AddDbContext<AppDbContext>(o =>
 {
     var cs = cfg.GetConnectionString("Default") ?? "Data Source=rhythmflow.db";
-    if ((cfg["Database:Provider"] ?? "Sqlite").Equals("Postgres", StringComparison.OrdinalIgnoreCase)) o.UseNpgsql(cs);
+    if ((cfg["Database:Provider"] ?? "Sqlite").Equals("Postgres", StringComparison.OrdinalIgnoreCase)) o.UseNpgsql(NormalizePostgres(cs));
     else o.UseSqlite(cs);
 });
 
@@ -41,7 +42,31 @@ builder.Services.AddScoped<BookingService>();
 builder.Services.AddSingleton<MediaTokenService>();
 builder.Services.AddSingleton<PayFastService>();
 builder.Services.AddSingleton<IPayFastApi, PayFastApiClient>();
-builder.Services.AddSingleton<IEmailSender, EmailService>();
+// Email goes out by SMTP (e.g. Gmail) by default, or through Brevo's web API with Email:Provider=Brevo
+// (needed on hosts that block SMTP ports, such as Render's free plan).
+builder.Services.Configure<BrevoOptions>(cfg.GetSection("Brevo"));
+builder.Services.AddSingleton<IEmailSender>(sp =>
+    string.Equals(cfg["Email:Provider"], "Brevo", StringComparison.OrdinalIgnoreCase)
+        ? ActivatorUtilities.CreateInstance<BrevoEmailSender>(sp)
+        : ActivatorUtilities.CreateInstance<EmailService>(sp));
+
+// Interactive API documentation (OpenAPI document + Scalar page at /docs).
+builder.Services.AddOpenApi(o => o.AddDocumentTransformer((doc, _, _) =>
+{
+    doc.Info.Title = "Rhythm & Flow API";
+    doc.Info.Version = "v1";
+    doc.Info.Description = "REST API behind the Rhythm & Flow Android app: accounts, subscriptions (PayFast), protected workout videos, " +
+                           "progress, classes and bookings, journal, notifications and admin tools. " +
+                           "Log in with POST /api/auth/login, then paste the returned token into the Bearer authentication box.";
+    doc.Components ??= new Microsoft.OpenApi.OpenApiComponents();
+    doc.Components.SecuritySchemes ??= new Dictionary<string, Microsoft.OpenApi.IOpenApiSecurityScheme>();
+    doc.Components.SecuritySchemes["Bearer"] = new Microsoft.OpenApi.OpenApiSecurityScheme
+    {
+        Type = Microsoft.OpenApi.SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "JWT",
+        Description = "JWT returned by /api/auth/login or /api/auth/register",
+    };
+    return Task.CompletedTask;
+}));
 builder.Services.AddSingleton<ErrorLogService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<PasswordResetService>();
@@ -115,6 +140,8 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+app.MapOpenApi();                               // /openapi/v1.json
+app.MapScalarApiReference("/docs", o => o.WithTitle("Rhythm & Flow API"));  // interactive docs: /docs
 app.MapGet("/health", () => Results.Ok(new { status = "ok", time = DateTime.UtcNow }));
 
 // Mark overdue subscriptions once an hour.
@@ -133,3 +160,16 @@ _ = Task.Run(async () =>
 });
 
 app.Run();
+
+// Hosts such as Render hand out the database as a URL (postgres://user:pass@host/db); Npgsql wants key=value pairs.
+static string NormalizePostgres(string cs)
+{
+    if (!cs.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) && !cs.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+        return cs;
+    var uri = new Uri(cs);
+    var parts = uri.UserInfo.Split(':', 2);
+    var port = uri.Port > 0 ? uri.Port : 5432;
+    return $"Host={uri.Host};Port={port};Database={uri.AbsolutePath.TrimStart('/')};" +
+           $"Username={Uri.UnescapeDataString(parts[0])};Password={Uri.UnescapeDataString(parts.ElementAtOrDefault(1) ?? "")};" +
+           "SSL Mode=Require;Trust Server Certificate=true";
+}

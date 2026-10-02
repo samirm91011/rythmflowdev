@@ -28,7 +28,11 @@ Samir: read this before every demo and before launch. Claude keeps this list up 
 | 20 | Seeded **placeholder** content (3 plans, 4 programmes, 8 lessons with public test clips, 6 classes) is created automatically on first start in *every* environment | Placeholders | Replace via Admin tools, then remove the sample seeding in `Data/SeedData.cs` before the client's real launch | `SeedData.cs` |
 | 21 | Hosted demo users `admin@rhythmandflow.test` / `alex@rhythmandflow.test` | Test accounts | Delete; create the client's real admin only | Azure settings `Seed__Users__*` |
 | 22 | `PayFast__Sandbox`, `PayFast__ValidateWithServer`, `PayFast__PublicBaseUrl` on Azure | sandbox / true / test URL | live merchant, `Sandbox=false`, final HTTPS domain | Azure settings |
-| 23 | Smart App Control on Samir's laptop blocks local .NET runs | Use Azure + GitHub Actions | (Optional, permanent) turn off only if Samir decides to | Windows Security |
+| 23 | Smart App Control on Samir's laptop blocks local .NET runs | Use hosted API + GitHub Actions | (Optional, permanent) turn off only if Samir decides to | Windows Security |
+| 24 | **Hosting host not final.** Campus Azure was withdrawn (2026-10-02). Options: Azure for Students ($100, no card) or Render free | see `docs/HOSTING-OPTIONS.md` | For the real launch pick a paid, always-on host (Render free **sleeps after 15 min and its database expires after 30 days**) | Render/Azure |
+| 25 | On Render free, Gmail SMTP is blocked → email goes via **Brevo** web API (`Email__Provider=Brevo`) | Brevo free (300/day), sender `rythmandflow12@gmail.com` | Verify the client's own sender address/domain in Brevo (or switch back to SMTP on a host that allows it) | Brevo + host settings |
+| 26 | Public API docs page `/docs` and `/openapi/v1.json` are open to anyone | Handy for the lecturer | Restrict or remove for production if the client prefers | `Program.cs` |
+| 27 | Pre-warm the free host before the demo (open `/health` 5+ minutes earlier) | — | — | browser |
 
 ## B. Before every demo
 - API reachable (hosted: open `/health`); database reset to demo data; PayFast sandbox login works; email sending works.
