@@ -410,3 +410,32 @@ class NotificationsViewModel(private val c: AppContainer) : ViewModel() {
         viewModelScope.launch { repo.markRead(null) }
     }
 }
+class AdminErrorsViewModel(private val c: AppContainer) : ViewModel() {
+    private val repo = c.repository
+    private val _items = MutableStateFlow(Load<List<ErrorLogItem>>())
+    val items: StateFlow<Load<List<ErrorLogItem>>> = _items.asStateFlow()
+    val status = MutableStateFlow("NEW")
+
+    init { load() }
+
+    fun setStatus(s: String) { status.value = s; load() }
+
+    fun load() {
+        viewModelScope.launch {
+            when (val r = repo.adminErrors(status.value)) {
+                is Outcome.Ok -> _items.value = Load(false, null, r.value)
+                is Outcome.Fail -> _items.value = Load(false, r.message, _items.value.data)
+            }
+        }
+    }
+
+    suspend fun resolve(id: Int): String? = when (val r = repo.adminResolveError(id)) {
+        is Outcome.Ok -> { load(); null }
+        is Outcome.Fail -> r.message
+    }
+
+    suspend fun resolveAll(): String? = when (val r = repo.adminResolveAllErrors()) {
+        is Outcome.Ok -> { load(); null }
+        is Outcome.Fail -> r.message
+    }
+}

@@ -56,7 +56,13 @@ interface Api {
     @POST("api/journal") suspend fun addJournal(@Body body: JournalRequest): JournalEntry
     @DELETE("api/journal/{id}") suspend fun deleteJournal(@Path("id") id: Int): Response<Unit>
 
+    // ---- Error reporting ----
+    @POST("api/telemetry/errors") suspend fun reportError(@Body body: ErrorReportBody): Response<Unit>
+
     // ---- Admin ----
+    @GET("api/admin/errors") suspend fun adminErrors(@Query("status") status: String = "NEW"): List<ErrorLogItem>
+    @POST("api/admin/errors/{id}/resolve") suspend fun adminResolveError(@Path("id") id: Int): Response<Unit>
+    @POST("api/admin/errors/resolve-all") suspend fun adminResolveAllErrors(): Response<Unit>
     @GET("api/admin/summary") suspend fun adminSummary(): AdminSummary
     @POST("api/admin/lessons") suspend fun adminCreateLesson(@Body body: LessonUpsert): Int
     @DELETE("api/admin/lessons/{id}") suspend fun adminDeleteLesson(@Path("id") id: Int): Response<Unit>

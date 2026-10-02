@@ -113,6 +113,16 @@ data class AdminSummary(
     val upcomingClasses: Int,
     val activeBookings: Int,
     val monthlyRecurringRevenue: Double,
+    val openErrors: Int = 0,
+)
+
+data class ErrorReportBody(
+    val message: String, val details: String?, val route: String?, val appVersion: String?, val device: String?, val fatal: Boolean,
+)
+
+data class ErrorLogItem(
+    val id: Int, val source: String, val message: String, val details: String, val route: String?, val userEmail: String?,
+    val appVersion: String?, val device: String?, val count: Int, val firstSeen: String, val lastSeen: String, val status: String,
 )
 
 data class LessonUpsert(

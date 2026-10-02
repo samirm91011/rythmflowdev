@@ -40,7 +40,8 @@ class AppContainer(val app: Application) {
         .build()
         .create(Api::class.java)
 
-    val repository = Repository(api, tokenStore)
+    val errorReporter = com.rhythmandflow.app.diagnostics.ErrorReporter(app, api)
+    val repository = Repository(api, tokenStore, errorReporter)
 }
 
 class RhythmApplication : Application() {
@@ -51,5 +52,6 @@ class RhythmApplication : Application() {
         super.onCreate()
         container = AppContainer(this)
         com.rhythmandflow.app.notifications.Notifier.createChannels(this)
+        container.errorReporter.install()
     }
 }

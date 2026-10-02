@@ -201,6 +201,7 @@ private fun MainGraph(session: SessionViewModel, notify: (String) -> Unit, pendi
 
             // ---- Admin ----
             composable("admin") { AdminHomeScreen(onBack = back, onNavigate = go) }
+            composable("admin/errors") { AdminErrorsScreen(onBack = back, notify = notify) }
             composable("admin/lessons") { AdminLessonsScreen(onBack = back, notify = notify) }
             composable("admin/classes") { AdminClassesScreen(onBack = back, notify = notify) }
             composable("admin/plans") { AdminPlansScreen(onBack = back, notify = notify) }
