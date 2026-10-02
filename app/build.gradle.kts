@@ -15,6 +15,8 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Run the whole app on built-in sample data (no server):  gradlew assembleDebug -PdemoMode=true.  Always off otherwise.
+        buildConfigField("boolean", "DEMO_MODE", (project.findProperty("demoMode") == "true").toString())
     }
 
     buildTypes {

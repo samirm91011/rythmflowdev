@@ -33,7 +33,7 @@ class AppContainer(val app: Application) {
         }
         .build()
 
-    private val api: Api = Retrofit.Builder()
+    private val api: Api = if (BuildConfig.DEMO_MODE) com.rhythmandflow.app.data.demo.DemoApi() else Retrofit.Builder()
         .baseUrl(BuildConfig.API_BASE_URL)
         .client(client)
         .addConverterFactory(GsonConverterFactory.create())

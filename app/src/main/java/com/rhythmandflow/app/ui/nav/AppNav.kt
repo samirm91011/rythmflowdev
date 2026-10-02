@@ -32,6 +32,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
@@ -124,7 +130,10 @@ private fun MainGraph(session: SessionViewModel, notify: (String) -> Unit, pendi
         containerColor = Color.White,
         bottomBar = {
             if (showBar) {
-                NavigationBar(containerColor = Color.White) {
+                NavigationBar(
+                    containerColor = Color.White, tonalElevation = 0.dp,
+                    modifier = Modifier.shadow(12.dp, ambientColor = Brand.Shadow.copy(alpha = 0.12f), spotColor = Brand.Shadow.copy(alpha = 0.12f)),
+                ) {
                     tabs.forEach { t ->
                         NavigationBarItem(
                             selected = route == t.route,
@@ -141,7 +150,13 @@ private fun MainGraph(session: SessionViewModel, notify: (String) -> Unit, pendi
             }
         },
     ) { padding ->
-        NavHost(nav, startDestination = "home", modifier = Modifier.padding(padding)) {
+        NavHost(
+            nav, startDestination = "home", modifier = Modifier.padding(padding),
+            enterTransition = { fadeIn(tween(220)) + slideInHorizontally(tween(260)) { it / 14 } },
+            exitTransition = { fadeOut(tween(160)) },
+            popEnterTransition = { fadeIn(tween(220)) },
+            popExitTransition = { fadeOut(tween(160)) + slideOutHorizontally(tween(240)) { it / 14 } },
+        ) {
             val go: (String) -> Unit = { r -> if (r in tabs.map { it.route }) nav.goTab(r) else nav.navigate(r) }
             val back: () -> Unit = { nav.popBackStack() }
 

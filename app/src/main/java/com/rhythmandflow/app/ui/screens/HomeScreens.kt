@@ -2,7 +2,16 @@ package com.rhythmandflow.app.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.semantics.Role
+import com.rhythmandflow.app.ui.components.pressScale
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -185,10 +194,14 @@ private fun MoodGrid(selected: String?, onSelect: (String) -> Unit) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 row.forEach { m ->
                     val isSel = selected == m.label
+                    val interaction = remember { MutableInteractionSource() }
+                    val shape = RoundedCornerShape(20.dp)
                     Column(
-                        Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).background(m.bg)
-                            .let { if (isSel) it.background(m.tint.copy(alpha = 0.18f)) else it }
-                            .clickable { onSelect(m.label) }.padding(vertical = 14.dp),
+                        Modifier.weight(1f).heightIn(min = 48.dp).pressScale(interaction)
+                            .clip(shape).background(m.bg)
+                            .let { if (isSel) it.background(m.tint.copy(alpha = 0.18f)).border(2.dp, m.tint, shape) else it }
+                            .selectable(selected = isSel, interactionSource = interaction, indication = LocalIndication.current, role = Role.RadioButton) { onSelect(m.label) }
+                            .padding(vertical = 14.dp, horizontal = 4.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Icon(m.icon, null, tint = m.tint, modifier = Modifier.size(28.dp))
@@ -223,8 +236,13 @@ private fun RhythmCards(onNavigate: (String) -> Unit) {
 
 @Composable
 private fun RhythmCard(title: String, sub: String, bg: Color, modifier: Modifier, onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(22.dp)
     Column(
-        modifier.height(120.dp).clip(RoundedCornerShape(20.dp)).background(bg).clickable(onClick = onClick).padding(12.dp),
+        modifier.heightIn(min = 120.dp).pressScale(interaction)
+            .shadow(4.dp, shape, ambientColor = Brand.Shadow.copy(alpha = 0.10f), spotColor = Brand.Shadow.copy(alpha = 0.16f))
+            .clip(shape).background(Brush.verticalGradient(listOf(Color.White, bg)))
+            .clickable(interactionSource = interaction, indication = LocalIndication.current, role = Role.Button, onClick = onClick).padding(12.dp),
         verticalArrangement = Arrangement.Bottom,
     ) {
         Text(title, style = MaterialTheme.typography.titleMedium)

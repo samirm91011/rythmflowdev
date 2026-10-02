@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -79,7 +80,7 @@ fun PlansScreen(session: SessionViewModel, onBack: () -> Unit, onPayment: (Int) 
 
 @Composable
 private fun PlanCard(plan: Plan, popular: Boolean, isCurrent: Boolean, busy: Boolean, onSubscribe: () -> Unit) {
-    SoftCard(Modifier.fillMaxWidth(), background = if (popular) Brand.TealSoft else Brand.Surface) {
+    SoftCard(Modifier.fillMaxWidth(), background = if (popular) Brand.TealSoft else Color.White) {
         Column(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(plan.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))

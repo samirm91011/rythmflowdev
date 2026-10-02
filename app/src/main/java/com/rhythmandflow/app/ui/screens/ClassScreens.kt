@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.rhythmandflow.app.data.Booking
 import com.rhythmandflow.app.data.ClassItem
@@ -58,7 +59,7 @@ fun ClassesScreen(onBookings: () -> Unit, notify: (String) -> Unit) {
 
 @Composable
 private fun ClassCard(c: ClassItem, busy: Boolean, onBook: () -> Unit) {
-    SoftCard(Modifier.fillMaxWidth(), background = Brand.Surface) {
+    SoftCard(Modifier.fillMaxWidth(), background = Color.White) {
         Column(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(c.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))

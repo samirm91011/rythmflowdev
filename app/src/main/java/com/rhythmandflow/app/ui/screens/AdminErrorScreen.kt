@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -123,7 +124,7 @@ fun AdminErrorsScreen(onBack: () -> Unit, notify: (String) -> Unit) {
 @Composable
 private fun ErrorCard(e: ErrorLogItem, onClick: () -> Unit) {
     val crash = e.message.startsWith("[CRASH]")
-    SoftCard(Modifier.fillMaxWidth(), onClick = onClick, background = if (e.status == "NEW") Brand.TangerineSoft else Brand.Surface) {
+    SoftCard(Modifier.fillMaxWidth(), onClick = onClick, background = if (e.status == "NEW") Brand.TangerineSoft else Color.White) {
         Column(Modifier.fillMaxWidth()) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 InfoPill(if (e.source == "APP") "App" else "Server", color = Brand.White, textColor = Brand.TealDeep)

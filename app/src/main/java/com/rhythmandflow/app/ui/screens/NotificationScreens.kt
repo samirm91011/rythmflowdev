@@ -79,7 +79,7 @@ private fun NotificationRow(n: AppNotification, onClick: () -> Unit) {
     SoftCard(
         Modifier.fillMaxWidth().semantics { contentDescription = "${if (n.read) "" else "Unread. "}${n.title}. ${n.body}. ${timeAgo(n.createdAt)}" },
         onClick = onClick,
-        background = if (n.read) Brand.Surface else Brand.TealSoft,
+        background = if (n.read) Color.White else Brand.TealSoft,
     ) {
         Row(verticalAlignment = Alignment.Top) {
             Box(Modifier.size(40.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
