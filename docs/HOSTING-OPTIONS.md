@@ -44,8 +44,12 @@ Facts (from Render's docs, checked 2026-10-02):
 - Running the API from the laptop (Smart App Control blocks it; a laptop is also a single point of failure at the demo).
 - Free .NET shared hosts with no PostgreSQL / old .NET versions.
 
-## DECISION (2026-10-02): xneelo Cloud
-Render and Azure ruled out by Samir (Azure subscription removed; xneelo is South African, rand-priced and billed by the hour).
+## CURRENT DECISION (2026-10-02, evening): **Azure for Students** (Azure App Service + Azure Database for PostgreSQL)
+A team member obtained an Azure for Students subscription (US$100 credit, no card), so **Azure is the hosting plan**; follow `docs/AZURE-SETUP.md`. The pipeline deploys to it when the GitHub variable `DEPLOY_TARGET` is `azure`.
+**xneelo Cloud is kept only as a backup** (nothing has been bought). Branch names that contain "xneelo" are historical. The container stack in `deploy/` and the Stack test are host-neutral: the Stack test also proves the API works against PostgreSQL, which is what Azure uses.
+
+## Backup plan: xneelo Cloud (not bought)
+Render and the original Azure subscription were ruled out earlier (the campus Azure subscription was removed; xneelo is South African, rand-priced and billed by the hour).
 - Package: **s-g-1cpu-2gb + 30 GB Premium boot volume, Ubuntu 24.04** ≈ R157/month ≈ R5.20/day.
 - The xneelo *Volume Plan* is shared PHP/MySQL hosting and cannot run this .NET API – it is not used.
 - Everything needed is in the repo: `deploy/` (compose stack, Caddy HTTPS, server setup, deploy, backup and smoke-test scripts), `.github/workflows/stack-test.yml` (builds the real container + PostgreSQL, tests every feature, load-tests and measures memory) and the `deploy-vps` job in `deploy.yml`.

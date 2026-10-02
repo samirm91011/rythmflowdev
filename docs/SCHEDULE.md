@@ -11,8 +11,8 @@ Updated by Claude as things move. ✔ = done, ◐ = in progress, ☐ = to do. **
 - ◐ Android: reset/notifications/cancel/error-report screens
 
 ## Sat 3 Oct
-- ✔ Hosting decided: **xneelo Cloud** – follow `docs/XNEELO-SETUP.md` (Parts 1–6). Samir/group member create the server and add the GitHub secrets.
-- ☐ Claude: read the **Stack test** summary on GitHub (measured memory) and confirm the 2 GB package before the server is created
+- ✔ Hosting decided: **Azure for Students** (team member's account) – follow `docs/AZURE-SETUP.md`. The team member creates the Azure resources; Samir adds the GitHub secrets/variables. (xneelo = backup only, nothing bought.)
+- ◐ Claude: Stack test (real container + PostgreSQL) – all feature checks pass except fixes in progress; load/memory numbers pending
 - (earlier note, superseded) **Hosting options:** try Azure for Students (azure.microsoft.com/free/students). If it fails within ~15 min, use Render + Brevo (`docs/HOSTING-OPTIONS.md`). Hosting is the critical path – everything else needs the live API.
 - 👤 Group member completes the hosting setup (Azure Parts 1–6, or the Render steps)
 - ☐ First deploy to Azure; verify `/health`, login, video playback, real sandbox payment end to end on the hosted API

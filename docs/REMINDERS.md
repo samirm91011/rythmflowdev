@@ -24,7 +24,7 @@ Samir: read this before every demo and before launch. Claude keeps this list up 
 
 | 17 | Gmail **app password** was typed in chat on 2026-10-02 | Treat as exposed | After the presentation: revoke it (Google Account → Security → App passwords) and create a new one for the client's mailbox | `appsettings.Local.json` + Azure settings |
 | 18 | GitHub repo | `samirm91011/rythmflowdev` (Samir's personal account) | Client's/organisation's repo or transfer ownership; remove any group-member access no longer needed | GitHub |
-| 19 | Azure resources | Campus subscription, resource group `rg-rhythmflow` | Client-owned subscription; or delete the group after the presentation to stop charges | Azure portal |
+| 19 | Azure resources | **Azure for Students** subscription (team member's account, US$100 credit), resource group `rg-rhythmflow`. Student credit stops when used up/expired and the account is tied to one student | Client-owned paid subscription (or move to the client's chosen host); delete `rg-rhythmflow` after the presentation if not needed | Azure portal |
 | 20 | Seeded **placeholder** content (3 plans, 4 programmes, 8 lessons with public test clips, 6 classes) is created automatically on first start in *every* environment | Placeholders | Replace via Admin tools, then remove the sample seeding in `Data/SeedData.cs` before the client's real launch | `SeedData.cs` |
 | 21 | Hosted demo users `admin@rhythmandflow.test` / `alex@rhythmandflow.test` | Test accounts | Delete; create the client's real admin only | Azure settings `Seed__Users__*` |
 | 22 | `PayFast__Sandbox`, `PayFast__ValidateWithServer`, `PayFast__PublicBaseUrl` on Azure | sandbox / true / test URL | live merchant, `Sandbox=false`, final HTTPS domain | Azure settings |
@@ -34,7 +34,7 @@ Samir: read this before every demo and before launch. Claude keeps this list up 
 | 26 | Public API docs page `/docs` and `/openapi/v1.json` are open to anyone | Handy for the lecturer | Restrict or remove for production if the client prefers | `Program.cs` |
 | 27 | Pre-warm the free host before the demo (open `/health` 5+ minutes earlier) | — | — | browser |
 
-| 28 | xneelo Cloud instance bills **every hour it exists** (≈R5.20/day incl. disk) | Running for the demo | **Delete the instance AND its volume after the presentation** (or keep it for the client's pilot) | xneelo Cloud console |
+| 28 | *(Only if the xneelo backup is used – currently NOT used)* xneelo Cloud instance bills **every hour it exists** (≈R5.20/day incl. disk) | Running for the demo | **Delete the instance AND its volume after the presentation** (or keep it for the client's pilot) | xneelo Cloud console |
 | 29 | Server SSH key `xneelo_rhythmflow` (private file on Samir's PC, also stored as GitHub secret `VPS_SSH_KEY`) | Team key | Create a new key pair for the client; remove ours from the server and from GitHub secrets | PC, server, GitHub |
 | 30 | HTTPS address `<ip>.sslip.io` (if used) | IP-based demo address | Real domain such as `api.clientdomain.co.za` (A record → server IP), then update `API_DOMAIN`, `PayFast__PublicBaseUrl`, GitHub variable `AZURE_API_URL` and rebuild the app | DNS + server `.env` + GitHub |
 | 31 | The server's `/opt/rhythmflow/.env` holds every live secret | Team values | Client's values; keep file mode 600; never copy it into chat/email | Server |

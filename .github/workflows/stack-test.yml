@@ -1,8 +1,8 @@
 name: Stack test
 
-# Builds the real API container, starts it with a real PostgreSQL (the same stack the xneelo server runs),
+# Builds the real API container, starts it with a real PostgreSQL (the same container stack that runs on a Linux server,
 # runs the full feature smoke test, then load-tests it and measures memory.
-# The memory numbers decide which xneelo server size is needed (see the run summary).
+# It also proves the API works on PostgreSQL (the database Azure uses) and shows how much memory a server needs.
 on:
   pull_request:
     branches: [develop, main]
@@ -114,6 +114,12 @@ jobs:
             tail -n 90 smoke.txt 2>/dev/null
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+          # The same key numbers as public annotations (readable on the run page without opening the log).
+          if [ "$TOTAL" -lt 800 ]; then VP="1 GB would just about work but 2 GB is the safe choice"; else VP="2 GB server needed (1 GB too small)"; fi
+          echo "::notice title=Memory sizing::API idle ${API_IDLE} MiB / peak ${API_PEAK} MiB | PostgreSQL idle ${DB_IDLE} MiB / peak ${DB_PEAK} MiB | estimated whole server ${TOTAL} MiB | ${VP}"
+          echo "::notice title=Load test::plans $(rps ab_plans.txt) req/s p95 $(p95 ab_plans.txt) ms failed $(failed ab_plans.txt) | lessons $(rps ab_lessons.txt) req/s p95 $(p95 ab_lessons.txt) ms failed $(failed ab_lessons.txt) | classes $(rps ab_classes.txt) req/s p95 $(p95 ab_classes.txt) ms failed $(failed ab_classes.txt)"
+          echo "::notice title=Smoke test::$(grep '^Result:' smoke.txt 2>/dev/null || echo 'no result line')"
 
       - name: API log on failure
         if: failure()
