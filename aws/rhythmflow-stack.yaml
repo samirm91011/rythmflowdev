@@ -23,10 +23,10 @@ Parameters:
     Default: rhythmflow
   DbInstanceClass:
     Type: String
-    Default: db.t3.micro
+    Default: db.t4g.micro
   InstanceType:
     Type: String
-    Default: t3.micro
+    Default: t4g.micro
   DbPublicCidr:
     Type: String
     Default: ""
@@ -102,7 +102,7 @@ Resources:
       MasterUserPassword: !Ref DbPassword
       PubliclyAccessible: !If [DbIsPublic, true, false]
       VPCSecurityGroups: [!GetAtt DbSecurityGroup.GroupId]
-      BackupRetentionPeriod: 1
+      BackupRetentionPeriod: 7
       MultiAZ: false
       AutoMinorVersionUpgrade: true
       DeletionProtection: false
