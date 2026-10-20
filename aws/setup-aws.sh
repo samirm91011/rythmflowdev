@@ -138,7 +138,9 @@ case "$MODE" in
     stack_exists || fail "The stack doesn't exist yet. Run ./setup-aws.sh first."
     need_settings
     if ! pg_dump --version 2>/dev/null | grep -qE ' (1[89]|[2-9][0-9])\.'; then
-      say "Installing the PostgreSQL 18 client"; sudo dnf install -y -q postgresql18 >/dev/null
+      say "Installing the PostgreSQL 18 client"
+      # CloudShell ships postgresql16, whose files clash with 18 - swap it out.
+      if rpm -q postgresql16 >/dev/null 2>&1; then sudo dnf swap -y -q postgresql16 postgresql18 >/dev/null; else sudo dnf install -y -q postgresql18 >/dev/null; fi
     fi
     MY_IP="$(curl -fsS https://checkip.amazonaws.com)"
     say "Opening the AWS database to this CloudShell ($MY_IP) for the copy"
