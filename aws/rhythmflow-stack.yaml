@@ -1,0 +1,270 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Rhythm & Flow API on AWS: Elastic Beanstalk (.NET 10, single instance), RDS PostgreSQL 18,
+  CloudFront for a free HTTPS address, and a GitHub Actions deploy role (OIDC, no stored keys).
+  Created and updated by aws/setup-aws.sh - see docs/AWS-SETUP.md.
+
+Parameters:
+  SolutionStackName:
+    Type: String
+    Description: Elastic Beanstalk platform, e.g. "64bit Amazon Linux 2023 v3.11.10 running .NET 10" (setup-aws.sh looks up the newest one).
+  DbPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 12
+    MaxLength: 64
+    AllowedPattern: "^[A-Za-z0-9._+!#-]+$"
+    ConstraintDescription: 12-64 characters; letters, digits and . _ + ! # - only (no spaces, quotes, @, / or ;).
+  DbAdminUser:
+    Type: String
+    Default: rfadmin
+  DbName:
+    Type: String
+    Default: rhythmflow
+  DbInstanceClass:
+    Type: String
+    Default: db.t3.micro
+  InstanceType:
+    Type: String
+    Default: t3.micro
+  DbPublicCidr:
+    Type: String
+    Default: ""
+    Description: >
+      Your PC's public IP as a.b.c.d/32 while you copy the data across from Azure. Leave empty afterwards
+      to make the database private again.
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: The account's default VPC (setup-aws.sh finds it).
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: The default VPC's subnets (setup-aws.sh finds them).
+  GitHubRepo:
+    Type: String
+    Default: samirm91011/rythmflowdev
+  CreateGitHubOidcProvider:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: "false if this AWS account already has the token.actions.githubusercontent.com identity provider."
+
+Conditions:
+  DbIsPublic: !Not [!Equals [!Ref DbPublicCidr, ""]]
+  CreateOidc: !Equals [!Ref CreateGitHubOidcProvider, "true"]
+
+Resources:
+  # ---------- Network rules (default VPC) ----------
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Rhythm & Flow API instances (used as the source for database access)
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0, Description: HTTP from CloudFront }
+      Tags: [{ Key: Name, Value: rhythmflow-api }]
+
+  DbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Rhythm & Flow PostgreSQL - only the API (and optionally CloudShell during migration)
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !GetAtt AppSecurityGroup.GroupId
+          Description: API instances
+        - !If
+          - DbIsPublic
+          - IpProtocol: tcp
+            FromPort: 5432
+            ToPort: 5432
+            CidrIp: !Ref DbPublicCidr
+            Description: Temporary - CloudShell for the data copy
+          - !Ref AWS::NoValue
+      Tags: [{ Key: Name, Value: rhythmflow-db }]
+
+  # ---------- Database ----------
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: rhythmflow-db
+      Engine: postgres
+      EngineVersion: "18"
+      DBInstanceClass: !Ref DbInstanceClass
+      AllocatedStorage: "20"
+      StorageType: gp3
+      StorageEncrypted: true
+      DBName: !Ref DbName
+      MasterUsername: !Ref DbAdminUser
+      MasterUserPassword: !Ref DbPassword
+      PubliclyAccessible: !If [DbIsPublic, true, false]
+      VPCSecurityGroups: [!GetAtt DbSecurityGroup.GroupId]
+      BackupRetentionPeriod: 1
+      MultiAZ: false
+      AutoMinorVersionUpgrade: true
+      DeletionProtection: false
+
+  # ---------- Elastic Beanstalk roles ----------
+  BeanstalkServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: elasticbeanstalk.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkManagedUpdatesCustomerRolePolicy
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+      Policies:
+        - PolicyName: read-rhythmflow-settings
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [ssm:GetParameter, ssm:GetParameters]
+                Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/rhythmflow/*
+              - Effect: Allow
+                Action: kms:Decrypt
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub ssm.${AWS::Region}.amazonaws.com
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref InstanceRole]
+
+  # ---------- Elastic Beanstalk app ----------
+  BeanstalkApp:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      ApplicationName: rhythmflow-api
+      Description: Rhythm & Flow ASP.NET Core API
+
+  BeanstalkEnv:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName: !Ref BeanstalkApp
+      EnvironmentName: rhythmflow-api-prod
+      CNAMEPrefix: !Sub rhythmflow-api-${AWS::AccountId}
+      SolutionStackName: !Ref SolutionStackName
+      OptionSettings:
+        - { Namespace: "aws:elasticbeanstalk:environment", OptionName: EnvironmentType, Value: SingleInstance }
+        - { Namespace: "aws:elasticbeanstalk:environment", OptionName: ServiceRole, Value: !GetAtt BeanstalkServiceRole.Arn }
+        - { Namespace: "aws:autoscaling:launchconfiguration", OptionName: IamInstanceProfile, Value: !Ref InstanceProfile }
+        - { Namespace: "aws:autoscaling:launchconfiguration", OptionName: SecurityGroups, Value: !GetAtt AppSecurityGroup.GroupId }
+        - { Namespace: "aws:ec2:instances", OptionName: InstanceTypes, Value: !Ref InstanceType }
+        - { Namespace: "aws:ec2:vpc", OptionName: VPCId, Value: !Ref VpcId }
+        - { Namespace: "aws:ec2:vpc", OptionName: Subnets, Value: !Join [",", !Ref SubnetIds] }
+        - { Namespace: "aws:ec2:vpc", OptionName: AssociatePublicIpAddress, Value: "true" }
+        - { Namespace: "aws:elasticbeanstalk:healthreporting:system", OptionName: SystemType, Value: enhanced }
+        - { Namespace: "aws:elasticbeanstalk:application", OptionName: "Application Healthcheck URL", Value: /health }
+        - { Namespace: "aws:elasticbeanstalk:cloudwatch:logs", OptionName: StreamLogs, Value: "true" }
+        - { Namespace: "aws:elasticbeanstalk:cloudwatch:logs", OptionName: RetentionInDays, Value: "14" }
+        - { Namespace: "aws:elasticbeanstalk:command", OptionName: DeploymentPolicy, Value: AllAtOnce }
+        # Non-secret runtime settings. Secrets are added by setup-aws.sh from Parameter Store.
+        - { Namespace: "aws:elasticbeanstalk:application:environment", OptionName: ASPNETCORE_ENVIRONMENT, Value: Production }
+        - { Namespace: "aws:elasticbeanstalk:application:environment", OptionName: PORT, Value: "5000" }
+        - { Namespace: "aws:elasticbeanstalk:application:environment", OptionName: ASPNETCORE_URLS, Value: "http://127.0.0.1:5000" }
+        - { Namespace: "aws:elasticbeanstalk:application:environment", OptionName: Database__Provider, Value: Postgres }
+        # CloudFront tells the API the original scheme in CloudFront-Forwarded-Proto; client IP is 2 hops back.
+        - { Namespace: "aws:elasticbeanstalk:application:environment", OptionName: ForwardedHeaders__ProtoHeaderName, Value: CloudFront-Forwarded-Proto }
+        - { Namespace: "aws:elasticbeanstalk:application:environment", OptionName: ForwardedHeaders__ForwardLimit, Value: "2" }
+
+  # ---------- HTTPS in front of the API (free *.cloudfront.net certificate) ----------
+  ApiDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: Rhythm & Flow API (HTTPS)
+        PriceClass: PriceClass_200
+        HttpVersion: http2and3
+        Origins:
+          - Id: beanstalk
+            DomainName: !Sub rhythmflow-api-${AWS::AccountId}.${AWS::Region}.elasticbeanstalk.com
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+              OriginReadTimeout: 60
+              OriginKeepaliveTimeout: 5
+        DefaultCacheBehavior:
+          TargetOriginId: beanstalk
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS, PUT, PATCH, POST, DELETE]
+          CachedMethods: [GET, HEAD]
+          # Managed policies: CachingDisabled + AllViewerAndCloudFrontHeaders-2022-06 (passes Authorization, Host,
+          # query strings and CloudFront-Forwarded-Proto through to the API).
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: 33f36d7e-f396-46d9-90e0-52428a34d9dc
+
+  # ---------- GitHub Actions deploy role (OIDC) ----------
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateOidc
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  GitHubDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: rhythmflow-github-deploy
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateOidc
+                - !Ref GitHubOidcProvider
+                - !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  - !Sub repo:${GitHubRepo}:ref:refs/heads/main
+                  - !Sub repo:${GitHubRepo}:environment:production
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess-AWSElasticBeanstalk
+
+Outputs:
+  ApiUrl:
+    Description: Public HTTPS address of the API (use this in the Android app and for PayFast)
+    Value: !Sub https://${ApiDistribution.DomainName}
+  BeanstalkUrl:
+    Description: Direct (HTTP only) address of the Beanstalk server, for troubleshooting
+    Value: !Sub http://rhythmflow-api-${AWS::AccountId}.${AWS::Region}.elasticbeanstalk.com
+  DbEndpoint:
+    Value: !GetAtt Database.Endpoint.Address
+  DbName:
+    Value: !Ref DbName
+  DbAdminUser:
+    Value: !Ref DbAdminUser
+  AppName:
+    Value: !Ref BeanstalkApp
+  EnvName:
+    Value: !Ref BeanstalkEnv
+  GitHubRoleArn:
+    Description: Put this in the GitHub secret AWS_ROLE_ARN
+    Value: !GetAtt GitHubDeployRole.Arn
