@@ -3,7 +3,8 @@ name: Deploy
 # Runs when code is merged into main (or when started by hand from the Actions tab).
 # 1. builds and tests the API  2. deploys it  3. waits for the live /health address  4. builds a demo APK for the live API.
 #
-# Which host is used is chosen by the repository VARIABLE  DEPLOY_TARGET :  "azure", "vps" (xneelo) or "render". If it is not set, nothing is deployed (safe default).
+# Which host is used is chosen by the repository VARIABLE  DEPLOY_TARGET :  "aws", "azure", "vps" (xneelo) or "render". If it is not set, nothing is deployed (safe default).
+#   aws   : needs secret AWS_ROLE_ARN, variable AZURE_API_URL (the live https address, name kept for all hosts) - see docs/AWS-SETUP.md
 #   vps   : needs secrets VPS_HOST, VPS_USER (rfdeploy), VPS_SSH_KEY; variable AZURE_API_URL (the live https address)
 #   render: needs secret RENDER_DEPLOY_HOOK_URL, variable AZURE_API_URL (the live https address, name kept for both hosts)
 #   azure : needs secret AZURE_WEBAPP_PUBLISH_PROFILE, variables AZURE_WEBAPP_NAME and AZURE_API_URL
@@ -39,6 +40,60 @@ jobs:
         with:
           name: api-package
           path: publish
+
+  deploy-aws:
+    name: Deploy API to AWS Elastic Beanstalk
+    needs: build-api
+    if: ${{ vars.DEPLOY_TARGET == 'aws' }}
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write   # lets GitHub sign in to AWS with OIDC, so no AWS keys are stored in GitHub
+      contents: read
+    env:
+      AWS_REGION: af-south-1
+      EB_APP: rhythmflow-api
+      EB_ENV: rhythmflow-api-prod
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: api-package
+          path: publish
+
+      - name: Build the Beanstalk bundle
+        run: |
+          echo "web: dotnet RhythmFlow.Api.dll" > publish/Procfile
+          cd publish && zip -qr ../bundle.zip .
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          VERSION="${GITHUB_SHA::8}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
+          BUCKET=$(aws elasticbeanstalk create-storage-location --query S3Bucket --output text)
+          aws s3 cp bundle.zip "s3://$BUCKET/$EB_APP/$VERSION.zip"
+          aws elasticbeanstalk create-application-version --application-name "$EB_APP" \
+            --version-label "$VERSION" --description "${GITHUB_REF_NAME} ${GITHUB_SHA::8}" \
+            --source-bundle "S3Bucket=$BUCKET,S3Key=$EB_APP/$VERSION.zip"
+          aws elasticbeanstalk update-environment --environment-name "$EB_ENV" --version-label "$VERSION"
+          aws elasticbeanstalk wait environment-updated --environment-names "$EB_ENV"
+          RUNNING=$(aws elasticbeanstalk describe-environments --environment-names "$EB_ENV" \
+            --query "Environments[0].VersionLabel" --output text)
+          echo "Running version: $RUNNING"
+          if [ "$RUNNING" != "$VERSION" ]; then
+            echo "Beanstalk did not switch to the new version - check the environment's Events and Logs in the AWS console"; exit 1
+          fi
+
+      - name: Wait for the live API to answer /health
+        run: |
+          for i in $(seq 1 18); do
+            if curl -fsS "${{ vars.AZURE_API_URL }}/health"; then echo; echo "API is healthy"; exit 0; fi
+            echo "not ready yet ($i/18)"; sleep 10
+          done
+          echo "API did not become healthy"; exit 1
 
   deploy-azure:
     name: Deploy API to Azure App Service
@@ -146,8 +201,8 @@ jobs:
 
   build-apk:
     name: Build demo APK for the live API
-    needs: [deploy-azure, deploy-render, deploy-vps]
-    if: ${{ always() && (needs.deploy-azure.result == 'success' || needs.deploy-render.result == 'success' || needs.deploy-vps.result == 'success') }}
+    needs: [deploy-aws, deploy-azure, deploy-render, deploy-vps]
+    if: ${{ always() && (needs.deploy-aws.result == 'success' || needs.deploy-azure.result == 'success' || needs.deploy-render.result == 'success' || needs.deploy-vps.result == 'success') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
