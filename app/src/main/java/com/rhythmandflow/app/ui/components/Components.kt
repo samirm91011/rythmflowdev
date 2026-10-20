@@ -1,6 +1,16 @@
 package com.rhythmandflow.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.material.icons.filled.Spa
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -69,42 +79,62 @@ fun PrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     loading: Boolean = false,
+) = GradientButton(text, onClick, modifier, enabled, loading, listOf(Color(0xFF3B8C7F), Brand.TealDeep), Brand.TealDeep)
+
+@Composable
+fun AccentButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) =
+    GradientButton(text, onClick, modifier, enabled, false, listOf(Color(0xFFEE7B58), Brand.Tangerine), Brand.Tangerine)
+
+/** Pill button with a soft gradient and glow that dips slightly when pressed. Grows taller with large text sizes. */
+@Composable
+private fun GradientButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    enabled: Boolean,
+    loading: Boolean,
+    colors: List<Color>,
+    glow: Color,
 ) {
-    Button(
-        onClick = onClick,
-        enabled = enabled && !loading,
-        modifier = modifier.fillMaxWidth().height(54.dp),
-        shape = RoundedCornerShape(28.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Brand.TealDeep, contentColor = Color.White),
+    val interaction = remember { MutableInteractionSource() }
+    val indication = LocalIndication.current
+    val shape = RoundedCornerShape(28.dp)
+    val active = enabled && !loading
+    Box(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 54.dp)
+            .pressScale(interaction)
+            .shadow(if (active) 7.dp else 0.dp, shape, ambientColor = glow.copy(alpha = 0.25f), spotColor = glow.copy(alpha = 0.45f))
+            .clip(shape)
+            .background(Brush.horizontalGradient(if (enabled) colors else listOf(Brand.LightGrey, Brand.LightGrey)))
+            .clickable(interactionSource = interaction, indication = indication, enabled = active, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 14.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        if (loading) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
-        else Text(text, style = MaterialTheme.typography.labelLarge)
+        if (loading) CircularProgressIndicator(Modifier.size(22.dp).semantics { contentDescription = "Please wait" }, color = Color.White, strokeWidth = 2.dp)
+        else Text(text, style = MaterialTheme.typography.labelLarge, color = if (enabled) Color.White else Brand.Muted, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 fun SecondaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.fillMaxWidth().height(54.dp),
-        shape = RoundedCornerShape(28.dp),
-        border = BorderStroke(1.dp, Brand.LightGrey),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = Brand.Ink),
-    ) { Text(text, style = MaterialTheme.typography.labelLarge) }
+    val interaction = remember { MutableInteractionSource() }
+    val indication = LocalIndication.current
+    val shape = RoundedCornerShape(28.dp)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .heightIn(min = 54.dp)
+            .pressScale(interaction)
+            .clip(shape)
+            .background(Color.White)
+            .border(1.dp, Brand.LightGrey, shape)
+            .clickable(interactionSource = interaction, indication = indication, enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 24.dp, vertical = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) { Text(text, style = MaterialTheme.typography.labelLarge, color = if (enabled) Brand.Ink else Brand.Muted, textAlign = TextAlign.Center) }
 }
-
-@Composable
-fun AccentButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier.fillMaxWidth().height(54.dp),
-        shape = RoundedCornerShape(28.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Brand.Tangerine, contentColor = Color.White),
-    ) { Text(text, style = MaterialTheme.typography.labelLarge) }
-}
-
 @Composable
 fun RfTextField(
     value: String,
@@ -183,30 +213,40 @@ fun SelectChip(text: String, selected: Boolean, onClick: () -> Unit, modifier: M
     )
 }
 
-/** Soft rounded card used for most list rows. */
+/** Soft rounded white card with a gentle, teal-tinted shadow. Used for most list rows. */
 @Composable
 fun SoftCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    background: Color = Brand.Surface,
+    background: Color = Color.White,
     content: @Composable () -> Unit,
 ) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = RoundedCornerShape(22.dp)
+    val interaction = remember { MutableInteractionSource() }
+    val indication = LocalIndication.current
     Box(
         modifier
+            .let { if (onClick != null) it.pressScale(interaction, 0.985f) else it }
+            .shadow(5.dp, shape, ambientColor = Brand.Shadow.copy(alpha = 0.10f), spotColor = Brand.Shadow.copy(alpha = 0.18f))
             .clip(shape)
             .background(background)
-            .let { if (onClick != null) it.clickable(onClick = onClick) else it }
+            .let { if (onClick != null) it.clickable(interactionSource = interaction, indication = indication, role = Role.Button, onClick = onClick) else it }
             .padding(16.dp),
     ) { content() }
 }
-
-/** Gradient stand-in for a thumbnail/hero image (the client's photography is not in the app yet). */
+/** Gradient stand-in for a thumbnail/hero image (the client's photography is not in the app yet), with soft decorative circles. */
 @Composable
 fun GradientBox(modifier: Modifier = Modifier, colors: List<Color> = listOf(Brand.Teal, Brand.TealDeep), content: @Composable () -> Unit = {}) {
-    Box(modifier.background(Brush.linearGradient(colors)), contentAlignment = Alignment.Center) { content() }
+    Box(
+        modifier
+            .background(Brush.linearGradient(colors))
+            .drawBehind {
+                drawCircle(Color.White.copy(alpha = 0.10f), radius = size.minDimension * 0.55f, center = Offset(size.width * 0.95f, size.height * 0.05f))
+                drawCircle(Color.White.copy(alpha = 0.07f), radius = size.minDimension * 0.40f, center = Offset(size.width * 0.05f, size.height * 0.95f))
+            },
+        contentAlignment = Alignment.Center,
+    ) { content() }
 }
-
 @Composable
 fun LockBadge(modifier: Modifier = Modifier) {
     Box(
@@ -217,7 +257,7 @@ fun LockBadge(modifier: Modifier = Modifier) {
 
 @Composable
 fun LoadingBox(modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Brand.TealDeep) }
+    Box(modifier.fillMaxSize().semantics { contentDescription = "Loading" }) { ListSkeleton(4, Modifier.padding(top = 8.dp)) }
 }
 
 @Composable
@@ -230,12 +270,14 @@ fun ErrorBox(message: String, onRetry: (() -> Unit)?, modifier: Modifier = Modif
 
 @Composable
 fun EmptyState(title: String, body: String, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.size(64.dp).clip(CircleShape).background(Brand.TealSoft), contentAlignment = Alignment.Center) {
+            Icon(Icons.Default.Spa, null, tint = Brand.TealDeep, modifier = Modifier.size(30.dp))
+        }
         Text(title, style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
         Text(body, style = MaterialTheme.typography.bodyMedium, color = Brand.Muted, textAlign = TextAlign.Center)
     }
 }
-
 @Composable
 fun InfoPill(text: String, modifier: Modifier = Modifier, color: Color = Brand.TealSoft, textColor: Color = Brand.TealDeep) {
     Box(modifier.clip(RoundedCornerShape(50)).background(color).padding(horizontal = 10.dp, vertical = 4.dp)) {

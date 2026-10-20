@@ -8,8 +8,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Alarm
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Lock
@@ -181,25 +186,49 @@ fun EditProfileScreen(session: SessionViewModel, onBack: () -> Unit, notify: (St
 }
 
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, onSignOut: () -> Unit) {
+fun SettingsScreen(session: SessionViewModel, onBack: () -> Unit, onNavigate: (String) -> Unit, onSignOut: () -> Unit) {
     var dialog by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var deleting by remember { mutableStateOf(false) }
+    var exporting by remember { mutableStateOf(false) }
+    var exportError by remember { mutableStateOf<String?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    fun openPage(path: String) {
+        val url = com.rhythmandflow.app.BuildConfig.API_BASE_URL.trimEnd('/') + path
+        try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+        catch (_: Exception) { dialog = "Can't open the page" to "No web browser was found on this phone." }
+    }
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("Settings", onBack = onBack)
         Column(Modifier.vScroll().padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             NavRow(Icons.Default.Person, "Account", "Personal information") { onNavigate("edit_profile") }
+            NavRow(Icons.Default.Lock, "Password", "Change your password") { onNavigate("change_password") }
             NavRow(Icons.Default.CreditCard, "Subscription", "Plan and billing") { onNavigate("subscription") }
-            NavRow(Icons.Default.Notifications, "Notifications", "Manage your preferences") {
-                dialog = "Notifications" to "Push notifications aren't switched on yet. We'll let you know here when class reminders arrive."
-            }
-            NavRow(Icons.Default.Lock, "Privacy & Security", "Keep your data safe") {
-                dialog = "Privacy & Security" to "We only collect what the app needs to work: your name, email, subscription, progress, journal entries and bookings. Passwords are stored securely hashed, your login token is kept encrypted on this device, and card details are handled only by PayFast."
-            }
+            NavRow(Icons.Default.Notifications, "Notifications", "Your updates and alerts") { onNavigate("notifications") }
+            ReminderSwitchRow()
+            NavRow(Icons.Default.Lock, "Privacy Policy", "How we look after your data") { openPage("/privacy") }
             NavRow(Icons.Default.Help, "Help & Support", "Get answers and contact us") {
                 dialog = "Help & Support" to "Visit rhythmandflow.co.za to get in touch with the Rhythm & Flow team."
             }
-            NavRow(Icons.Default.Policy, "Terms & Conditions", "Read our policies") {
-                dialog = "Terms & Conditions" to "Full terms and the privacy policy will be published before launch. Subscriptions renew monthly until cancelled."
+            NavRow(Icons.Default.Policy, "Terms of Use", "Read our terms") { openPage("/terms") }
+            NavRow(Icons.Default.Download, if (exporting) "Preparing your data..." else "Download my data", "Get a copy of everything we hold about you") {
+                if (!exporting) {
+                    exporting = true
+                    scope.launch {
+                        val (json, err) = session.exportData()
+                        exporting = false
+                        if (json != null) {
+                            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(android.content.Intent.EXTRA_SUBJECT, "My Rhythm & Flow data")
+                                putExtra(android.content.Intent.EXTRA_TEXT, json)
+                            }
+                            context.startActivity(android.content.Intent.createChooser(send, "Save or share my data"))
+                        } else exportError = err ?: "Something went wrong. Please try again."
+                    }
+                }
             }
+            NavRow(Icons.Default.DeleteForever, "Delete my account", "Erase your account and personal data") { deleting = true }
             VSpace(8)
             OutlinedButton(
                 onClick = onSignOut, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(28.dp),
@@ -213,5 +242,63 @@ fun SettingsScreen(onBack: () -> Unit, onNavigate: (String) -> Unit, onSignOut: 
     dialog?.let { (t, body) ->
         AlertDialog(onDismissRequest = { dialog = null }, title = { Text(t) }, text = { Text(body) },
             confirmButton = { TextButton(onClick = { dialog = null }) { Text("OK") } })
+    }
+    exportError?.let { msg ->
+        AlertDialog(onDismissRequest = { exportError = null }, title = { Text("Couldn't get your data") }, text = { Text(msg) },
+            confirmButton = { TextButton(onClick = { exportError = null }) { Text("OK") } })
+    }
+    if (deleting) DeleteAccountDialog(session, onDismiss = { deleting = false })
+}
+
+/** Asks for the password, then deletes the account. Plain about what is and is not erased. */
+@Composable
+private fun DeleteAccountDialog(session: SessionViewModel, onDismiss: () -> Unit) {
+    var password by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = { if (!busy) onDismiss() },
+        title = { Text("Delete your account?") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("This permanently erases your profile, journal, bookings, progress and notifications. Any active subscription is cancelled first. Payment records are kept without your name, because we must keep financial records. This can't be undone.")
+                RfTextField(password, { password = it; error = null }, "Your password", isPassword = true, error = error)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = password.isNotBlank() && !busy, onClick = {
+                busy = true
+                scope.launch {
+                    val err = session.deleteAccount(password)
+                    busy = false
+                    if (err != null) error = err   // on success the person is signed out and this screen goes away
+                }
+            }) { Text(if (busy) "Deleting..." else "Delete forever", color = Brand.Error) }
+        },
+        dismissButton = { TextButton(enabled = !busy, onClick = onDismiss) { Text("Keep my account") } },
+    )
+}
+
+/** Turns the "1 hour before class" reminder on or off for this phone. */
+@Composable
+private fun ReminderSwitchRow() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = container().localPrefs
+    var on by remember { mutableStateOf(com.rhythmandflow.app.notifications.ReminderScheduler.enabled(prefs)) }
+    SoftCard(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Alarm, null, tint = Brand.TealDeep)
+            Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
+                Text("Class reminders", style = MaterialTheme.typography.titleSmall)
+                Text("A notification 1 hour before each class you book", style = MaterialTheme.typography.bodySmall, color = Brand.Muted)
+            }
+            Switch(
+                checked = on,
+                onCheckedChange = { on = it; com.rhythmandflow.app.notifications.ReminderScheduler.setEnabled(context.applicationContext, prefs, it) },
+                modifier = Modifier.semantics { contentDescription = "Class reminders" },
+                colors = SwitchDefaults.colors(checkedTrackColor = Brand.TealDeep),
+            )
+        }
     }
 }

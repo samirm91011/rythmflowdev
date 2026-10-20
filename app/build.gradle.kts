@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -15,6 +15,8 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Run the whole app on built-in sample data (no server):  gradlew assembleDebug -PdemoMode=true.  Always off otherwise.
+        buildConfigField("boolean", "DEMO_MODE", (project.findProperty("demoMode") == "true").toString())
     }
 
     buildTypes {
@@ -67,6 +69,9 @@ dependencies {
 
     // Secure token storage
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // Background work (notification sync, class reminders)
+    implementation("androidx.work:work-runtime-ktx:2.10.2")
 
     // Video playback
     implementation("androidx.media3:media3-exoplayer:1.7.1")

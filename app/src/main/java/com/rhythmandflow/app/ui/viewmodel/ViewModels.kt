@@ -50,7 +50,7 @@ class SessionViewModel(private val c: AppContainer) : ViewModel() {
         viewModelScope.launch {
             if (!repo.hasToken) { _state.value = SessionState.SignedOut; return@launch }
             when (val r = repo.me()) {
-                is Outcome.Ok -> { _state.value = SessionState.SignedIn(r.value); refreshSubscriptions() }
+                is Outcome.Ok -> { _state.value = SessionState.SignedIn(r.value); refreshSubscriptions(); com.rhythmandflow.app.notifications.NotificationSync.start(c.app) }
                 // A network failure should not log the user out; only an auth failure does (handled via `unauthorized`).
                 is Outcome.Fail -> _state.value = SessionState.SignedOut
             }
@@ -59,7 +59,7 @@ class SessionViewModel(private val c: AppContainer) : ViewModel() {
 
     suspend fun login(identifier: String, password: String): String? =
         when (val r = repo.login(identifier.trim(), password)) {
-            is Outcome.Ok -> { _state.value = SessionState.SignedIn(r.value.user); refreshSubscriptions(); null }
+            is Outcome.Ok -> { _state.value = SessionState.SignedIn(r.value.user); refreshSubscriptions(); com.rhythmandflow.app.notifications.NotificationSync.start(c.app); null }
             is Outcome.Fail -> r.message
         }
 
@@ -75,8 +75,31 @@ class SessionViewModel(private val c: AppContainer) : ViewModel() {
             is Outcome.Fail -> r.message
         }
 
+    suspend fun changePassword(current: String, new: String): String? =
+        when (val r = repo.changePassword(current, new)) {
+            is Outcome.Ok -> { _state.value = SessionState.SignedIn(r.value.user); null }
+            is Outcome.Fail -> r.message
+        }
+
+    /** The person's data as JSON text, or an error message. */
+    suspend fun exportData(): Pair<String?, String?> =
+        when (val r = repo.exportData()) {
+            is Outcome.Ok -> r.value to null
+            is Outcome.Fail -> null to r.message
+        }
+
+    /** Deletes the account; on success the person is signed out. Returns an error message or null. */
+    suspend fun deleteAccount(password: String): String? =
+        when (val r = repo.deleteAccount(password)) {
+            is Outcome.Ok -> { signOut(); null }
+            is Outcome.Fail -> r.message
+        }
+
     fun signOut() {
         repo.signOut()
+        com.rhythmandflow.app.notifications.NotificationSync.stop(c.app)
+        com.rhythmandflow.app.notifications.ReminderScheduler.cancelAll(c.app, c.localPrefs)
+        c.localPrefs.putInt("last_notified_id", -1)
         _subs.value = emptyList()
         _state.value = SessionState.SignedOut
     }
@@ -219,10 +242,8 @@ class PlansViewModel(private val c: AppContainer) : ViewModel() {
         return r
     }
 
-    suspend fun cancel(subId: Int): String? = when (val r = repo.cancelSubscription(subId)) {
-        is Outcome.Ok -> { refreshSubs(); null }
-        is Outcome.Fail -> r.message
-    }
+    suspend fun cancel(subId: Int): Outcome<CancelResult> =
+        repo.cancelSubscription(subId).also { if (it is Outcome.Ok) refreshSubs() }
 
     suspend fun simulatePayment(subId: Int): String? = when (val r = repo.simulatePayment(subId)) {
         is Outcome.Ok -> null
@@ -254,7 +275,11 @@ class ClassesViewModel(private val c: AppContainer) : ViewModel() {
             val bk = repo.bookings()
             _state.value = when {
                 cl is Outcome.Fail -> ClassesState(false, cl.message)
-                else -> ClassesState(false, null, (cl as Outcome.Ok).value, (bk as? Outcome.Ok)?.value ?: emptyList())
+                else -> {
+                    val bookings = (bk as? Outcome.Ok)?.value
+                    if (bookings != null) com.rhythmandflow.app.notifications.ReminderScheduler.sync(c.app, c.localPrefs, bookings)
+                    ClassesState(false, null, (cl as Outcome.Ok).value, bookings ?: emptyList())
+                }
             }
         }
     }
@@ -272,7 +297,7 @@ class ClassesViewModel(private val c: AppContainer) : ViewModel() {
 }
 
 // ============================================================ Home / journal / profile
-data class HomeState(val summary: ProgressSummary? = null, val nextBooking: Booking? = null, val loading: Boolean = true)
+data class HomeState(val summary: ProgressSummary? = null, val nextBooking: Booking? = null, val loading: Boolean = true, val unread: Int = 0)
 
 class HomeViewModel(private val c: AppContainer) : ViewModel() {
     private val repo = c.repository
@@ -284,8 +309,11 @@ class HomeViewModel(private val c: AppContainer) : ViewModel() {
     fun load() {
         viewModelScope.launch {
             val s = (repo.progressSummary() as? Outcome.Ok)?.value
-            val b = (repo.bookings() as? Outcome.Ok)?.value?.firstOrNull()
-            _state.value = HomeState(s, b, false)
+            val allBookings = (repo.bookings() as? Outcome.Ok)?.value
+            if (allBookings != null) com.rhythmandflow.app.notifications.ReminderScheduler.sync(c.app, c.localPrefs, allBookings)
+            val b = allBookings?.firstOrNull()
+            val unread = (repo.unreadCount() as? Outcome.Ok)?.value?.count ?: 0
+            _state.value = HomeState(s, b, false, unread)
         }
     }
 
@@ -366,4 +394,62 @@ class AdminViewModel(private val c: AppContainer) : ViewModel() {
     suspend fun createLesson(l: LessonUpsert) = after(repo.adminCreateLesson(l))
     suspend fun deleteLesson(id: Int) = after(repo.adminDeleteLesson(id))
     suspend fun updatePlan(id: Int, p: PlanUpsert) = after(repo.adminUpdatePlan(id, p))
+}
+
+// ============================================================ Notifications
+class NotificationsViewModel(private val c: AppContainer) : ViewModel() {
+    private val repo = c.repository
+    private val _items = MutableStateFlow(Load<List<AppNotification>>())
+    val items: StateFlow<Load<List<AppNotification>>> = _items.asStateFlow()
+
+    init { load() }
+
+    fun load() {
+        viewModelScope.launch {
+            when (val r = repo.notifications()) {
+                is Outcome.Ok -> _items.value = Load(false, null, r.value)
+                is Outcome.Fail -> _items.value = Load(false, r.message, _items.value.data)
+            }
+        }
+    }
+
+    fun markRead(id: Int) {
+        // show it as read straight away, then tell the server
+        _items.update { s -> s.copy(data = s.data?.map { if (it.id == id) it.copy(read = true) else it }) }
+        viewModelScope.launch { repo.markRead(listOf(id)) }
+    }
+
+    fun markAllRead() {
+        _items.update { s -> s.copy(data = s.data?.map { it.copy(read = true) }) }
+        viewModelScope.launch { repo.markRead(null) }
+    }
+}
+class AdminErrorsViewModel(private val c: AppContainer) : ViewModel() {
+    private val repo = c.repository
+    private val _items = MutableStateFlow(Load<List<ErrorLogItem>>())
+    val items: StateFlow<Load<List<ErrorLogItem>>> = _items.asStateFlow()
+    val status = MutableStateFlow("NEW")
+
+    init { load() }
+
+    fun setStatus(s: String) { status.value = s; load() }
+
+    fun load() {
+        viewModelScope.launch {
+            when (val r = repo.adminErrors(status.value)) {
+                is Outcome.Ok -> _items.value = Load(false, null, r.value)
+                is Outcome.Fail -> _items.value = Load(false, r.message, _items.value.data)
+            }
+        }
+    }
+
+    suspend fun resolve(id: Int): String? = when (val r = repo.adminResolveError(id)) {
+        is Outcome.Ok -> { load(); null }
+        is Outcome.Fail -> r.message
+    }
+
+    suspend fun resolveAll(): String? = when (val r = repo.adminResolveAllErrors()) {
+        is Outcome.Ok -> { load(); null }
+        is Outcome.Fail -> r.message
+    }
 }

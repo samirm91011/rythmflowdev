@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -79,7 +80,7 @@ fun PlansScreen(session: SessionViewModel, onBack: () -> Unit, onPayment: (Int) 
 
 @Composable
 private fun PlanCard(plan: Plan, popular: Boolean, isCurrent: Boolean, busy: Boolean, onSubscribe: () -> Unit) {
-    SoftCard(Modifier.fillMaxWidth(), background = if (popular) Brand.TealSoft else Brand.Surface) {
+    SoftCard(Modifier.fillMaxWidth(), background = if (popular) Brand.TealSoft else Color.White) {
         Column(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(plan.name, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
@@ -179,6 +180,8 @@ fun SubscriptionScreen(session: SessionViewModel, onBack: () -> Unit, onPlans: (
     val subs by vm.subscriptions.collectAsState()
     val scope = rememberCoroutineScope()
     var confirm by remember { mutableStateOf<Subscription?>(null) }
+    var cancelledMessage by remember { mutableStateOf<String?>(null) }
+    var cancelling by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { vm.refreshSubs() }
 
     Column(Modifier.fillMaxSize()) {
@@ -215,14 +218,30 @@ fun SubscriptionScreen(session: SessionViewModel, onBack: () -> Unit, onPlans: (
         AlertDialog(
             onDismissRequest = { confirm = null },
             title = { Text("Cancel your subscription?") },
-            text = { Text("You'll keep access until ${formatDate(s.endDate)}. To stop future PayFast charges, please also cancel the recurring payment from your PayFast account or contact support.") },
+            text = { Text("We'll tell PayFast to stop your monthly payments. You'll keep access to your plan until ${formatDate(s.endDate)}.") },
             confirmButton = {
-                TextButton(onClick = {
+                TextButton(enabled = !cancelling, onClick = {
                     confirm = null
-                    scope.launch { notify(vm.cancel(s.id) ?: "Subscription cancelled."); session.refreshSubscriptions() }
+                    cancelling = true
+                    scope.launch {
+                        when (val r = vm.cancel(s.id)) {
+                            is Outcome.Ok -> { cancelledMessage = r.value.message; session.refreshSubscriptions() }
+                            is Outcome.Fail -> notify(r.message)
+                        }
+                        cancelling = false
+                    }
                 }) { Text("Cancel subscription", color = Brand.Error) }
             },
             dismissButton = { TextButton(onClick = { confirm = null }) { Text("Keep it") } },
+        )
+    }
+
+    cancelledMessage?.let { msg ->
+        AlertDialog(
+            onDismissRequest = { cancelledMessage = null },
+            title = { Text("Subscription cancelled") },
+            text = { Text(msg) },
+            confirmButton = { TextButton(onClick = { cancelledMessage = null }) { Text("OK") } },
         )
     }
 }

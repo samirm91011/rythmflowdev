@@ -42,3 +42,16 @@ fun greeting(): String {
         else -> "Good evening"
     }
 }
+
+/** "Just now", "5 min ago", "3 h ago", "Yesterday", or the date. */
+fun timeAgo(iso: String?): String {
+    val then = try { if (iso == null) return "" else Instant.parse(iso) } catch (_: Exception) { return "" }
+    val minutes = java.time.Duration.between(then, Instant.now()).toMinutes()
+    return when {
+        minutes < 1 -> "Just now"
+        minutes < 60 -> "$minutes min ago"
+        minutes < 60 * 24 -> "${minutes / 60} h ago"
+        minutes < 60 * 48 -> "Yesterday"
+        else -> formatDate(iso)
+    }
+}

@@ -13,6 +13,10 @@ Living record of what exists, what changed, and what is left. Newest entries at 
 | Dropped | Google sign-in (decided 2026-10-02: not needed, extra setup). Per-user video watermark (decided out of scope). |
 
 ## Decisions
+- 2026-10-02 (evening) **Hosting is now Azure for Students** (a team member's account): Azure App Service + Azure Database for PostgreSQL, deployed by the `Deploy` workflow when `DEPLOY_TARGET=azure`. xneelo is only a backup (nothing bought); branches/files named "xneelo" are historical. Repo made **public** by Samir (history scanned: no secrets). Stack test (real container + PostgreSQL) results so far: backend unit tests 100% pass on Linux; all end-to-end feature checks pass against PostgreSQL except one test-script issue (docs redirect), fixed.
+- 2026-10-02 **First push to GitHub** (`samirm91011/rythmflowdev`, private; history scanned first: no secrets in any commit). Branches on GitHub: `main` (baseline, no workflows), `develop`, `feature/hosting-and-api-docs`, `feature/xneelo-vps-deploy` (contains the Stack test). GitHub's own "Initial commit" was merged in. The campus repo from the lecturer will be used later (see REMINDERS #33).
+- 2026-10-02 **Hosting = xneelo Cloud** (s-g-1cpu-2gb, 30 GB premium boot volume, Ubuntu 24.04, ≈R157/month, hourly billing). Built on branch `feature/xneelo-vps-deploy`: `deploy/` (docker-compose with Caddy + API + PostgreSQL, server setup/deploy/backup scripts, end-to-end `smoke-test.sh`), `stack-test.yml` workflow (real container + PostgreSQL, full feature test, load test, memory sizing summary), `deploy-vps` job in `deploy.yml`, guide `docs/XNEELO-SETUP.md`. Not yet pushed or run: the stack test needs GitHub (Samir to say "go").
+- 2026-10-02 **Azure subscription removed by campus.** Host-neutral setup prepared: `backend/Dockerfile`, `render.yaml` (Render + free PostgreSQL), deploy workflow switchable by `DEPLOY_TARGET`, database URLs of the form `postgres://…` accepted, Brevo web-API email option (Render free blocks SMTP), interactive API docs at `/docs` (OpenAPI + Scalar; this is the "Swagger" style documentation page, not a host). Recommendation: try Azure for Students first, Render as fallback. Work is on branch `feature/hosting-and-api-docs` (local, not pushed).
 - 2026-10-02 **Presentation date: 7 Oct 2026.** Option A chosen: keep Smart App Control on; backend runs on Azure (App Service + PostgreSQL), built/tested by GitHub Actions. Samir's GitHub repo: `samirm91011/rythmflowdev`. A group member will set up Azure from `docs/AZURE-SETUP.md`.
 - 2026-10-02 Gmail account `rythmandflow12@gmail.com` (team test mailbox) configured for password-reset emails and admin error alerts.
 - 2026-10-02 Use the team's own PayFast sandbox, Gmail and test data now; switch to the client's details at launch.
@@ -21,6 +25,11 @@ Living record of what exists, what changed, and what is left. Newest entries at 
 - Earlier: cloud-neutral backend (SQLite locally, PostgreSQL by config); videos are placeholder public clips; plans R99/R199/R299 are placeholders; Shop is a "coming soon" screen.
 
 ## Work log
+### 2026-10-03
+- **Visual refresh done (Feature 6):** brand fonts (Cormorant Garamond headings, Open Sans body), white cards with soft shadows, gradient pill buttons with press feedback, selected-state mood tiles, skeleton loading, screen transitions. Checked on the emulator in demo mode (Home, Move, Classes, Journal, You).
+- **Account deletion and data export done (Feature 11):** API `GET /api/account/export` and `POST /api/account/delete` (password re-check, active PayFast subscription cancelled first, personal content erased, payment records kept anonymised, last admin protected), public `/terms` and `/privacy` draft pages, Settings rows in the app. 8 new unit tests (run in GitHub Actions). Verified in demo mode on the emulator: wrong password is refused, data share sheet opens.
+- Demo mode (`-PdemoMode=true`) added so every screen can be checked without the server.
+
 ### 2026-10-02
 - PayFast sandbox merchant details added to `appsettings.Local.json`; verified live: PayFast sandbox accepts signed one-off and monthly-subscription requests built with our passphrase (this also proves our signing code is correct).
 - Google sign-in removed from the backend (service, package, user fields).
