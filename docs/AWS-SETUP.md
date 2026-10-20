@@ -4,9 +4,9 @@ This replaces the Azure App Service + Azure PostgreSQL setup with:
 
 | Azure | AWS | Notes |
 |---|---|---|
-| App Service (.NET 10) | **Elastic Beanstalk**, .NET 10 on Amazon Linux 2023, single `t3.micro` server | No load balancer, to keep cost down |
+| App Service (.NET 10) | **Elastic Beanstalk**, .NET 10 on Amazon Linux 2023, single `t4g.micro` (Graviton) server | No load balancer, to keep cost down |
 | `*.azurewebsites.net` HTTPS address | **CloudFront** `https://xxxx.cloudfront.net` | Free HTTPS certificate; the Android app only allows HTTPS |
-| Azure Database for PostgreSQL 18 | **RDS for PostgreSQL 18**, `db.t3.micro`, 20 GB | Private; only the API can reach it |
+| Azure Database for PostgreSQL 18 | **RDS for PostgreSQL 18**, `db.t4g.micro` (Graviton), 20 GB, 7-day backups | Private; only the API can reach it |
 | App Service environment variables | **Parameter Store** (encrypted) → Beanstalk environment | Values never shown in the Beanstalk console |
 | Application Insights | **CloudWatch Logs** | Kept 14 days |
 | Publish profile secret | **GitHub OIDC role** | No AWS keys stored in GitHub |
@@ -19,7 +19,7 @@ Everything lives in the Cape Town region (`af-south-1`). The files are in `aws/`
 - `app-settings.example.env` – optional NAME=value alternative to pasting Azure's settings
 - `copy-database.ps1` – optional: the same database copy from a Windows PC
 
-**Cost:** roughly USD 30–40 a month once any free credits are used up (server, database, two public IPv4 addresses, a little CloudFront). Check with the [AWS Pricing Calculator](https://calculator.aws) and set a budget alert (step 1).
+**Cost:** roughly USD 31 a month (about R560) once any free credits are used up (server, database, two public IPv4 addresses, a little CloudFront). Check with the [AWS Pricing Calculator](https://calculator.aws) and set a budget alert (step 1).
 
 ---
 
