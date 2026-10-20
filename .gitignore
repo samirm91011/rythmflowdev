@@ -24,3 +24,7 @@ appsettings.Local.json
 app/google-services.json
 firebase-service-account*.json
 **/firebase-service-account*.json
+
+# AWS settings file with real secrets (copy of aws/app-settings.example.env)
+aws/app-settings.env
+__pycache__/
