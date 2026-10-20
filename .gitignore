@@ -19,3 +19,8 @@ obj/
 appsettings.Development.json
 appsettings.Local.json
 .env
+
+# Firebase push notifications: private project files (never commit)
+app/google-services.json
+firebase-service-account*.json
+**/firebase-service-account*.json

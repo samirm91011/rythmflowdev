@@ -93,12 +93,11 @@ fun WelcomeScreen(onStart: () -> Unit) {
 }
 
 @Composable
-fun SignInScreen(session: SessionViewModel, onSignUp: () -> Unit, notify: (String) -> Unit) {
+fun SignInScreen(session: SessionViewModel, onSignUp: () -> Unit, onForgot: () -> Unit, notify: (String) -> Unit) {
     var identifier by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var showForgot by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun submit() {
@@ -112,28 +111,15 @@ fun SignInScreen(session: SessionViewModel, onSignUp: () -> Unit, notify: (Strin
         VSpace(12)
         RfTextField(password, { password = it; error = null }, "Password", Icons.Default.Lock, isPassword = true)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = { showForgot = true }) { Text("Forgot Password?", color = Brand.TealDeep) }
+            TextButton(onClick = onForgot) { Text("Forgot Password?", color = Brand.TealDeep) }
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium); VSpace(8) }
         PrimaryButton("Log In", onClick = ::submit, loading = busy)
-        VSpace(16)
-        OrDivider()
-        VSpace(16)
-        SecondaryButton("Continue with Google", onClick = { notify("Google sign-in is coming soon.") })
         VSpace(16)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             Text("Don't have an account?", style = MaterialTheme.typography.bodyMedium)
             TextButton(onClick = onSignUp) { Text("Sign up", color = Brand.TealDeep) }
         }
-    }
-
-    if (showForgot) {
-        AlertDialog(
-            onDismissRequest = { showForgot = false },
-            title = { Text("Forgot your password?") },
-            text = { Text("Password reset by email isn't available yet. Please contact Rhythm & Flow support and they will help you get back in.") },
-            confirmButton = { TextButton(onClick = { showForgot = false }) { Text("OK") } },
-        )
     }
 }
 
@@ -183,7 +169,7 @@ fun SignUpScreen(session: SessionViewModel, onBack: () -> Unit, onLogin: () -> U
 }
 
 @Composable
-private fun AuthFrame(title: String, subtitle: String, onBack: (() -> Unit)? = null, content: @Composable () -> Unit) {
+internal fun AuthFrame(title: String, subtitle: String, onBack: (() -> Unit)? = null, content: @Composable () -> Unit) {
     Column(
         Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding()
             .verticalScroll(rememberScrollState()).padding(horizontal = 24.dp),

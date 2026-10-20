@@ -8,6 +8,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -141,6 +143,7 @@ fun MoveScreen(onLesson: (Int) -> Unit) {
     }
 }
 
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun LessonRow(l: Lesson, onClick: () -> Unit) {
     SoftCard(Modifier.fillMaxWidth(), onClick = onClick, background = Color.White) {
@@ -155,7 +158,7 @@ fun LessonRow(l: Lesson, onClick: () -> Unit) {
                 Text(l.title, style = MaterialTheme.typography.titleMedium)
                 Text(l.description, style = MaterialTheme.typography.bodySmall, color = Brand.Muted, maxLines = 2)
                 VSpace(6)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     InfoPill(l.durationLabel)
                     InfoPill(l.category, color = Brand.Surface, textColor = Brand.Muted)
                     if (l.isPreview) InfoPill("Preview", color = Brand.TangerineSoft, textColor = Brand.Tangerine)

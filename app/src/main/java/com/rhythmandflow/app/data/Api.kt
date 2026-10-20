@@ -15,12 +15,17 @@ interface Api {
     @POST("api/auth/login") suspend fun login(@Body body: LoginRequest): AuthResponse
     @GET("api/auth/me") suspend fun me(): User
     @PUT("api/auth/me") suspend fun updateProfile(@Body body: UpdateProfileRequest): User
+    @POST("api/auth/forgot-password") suspend fun forgotPassword(@Body body: ForgotPasswordRequest): MessageResponse
+    @POST("api/auth/reset-password") suspend fun resetPassword(@Body body: ResetPasswordRequest): MessageResponse
+    @POST("api/auth/change-password") suspend fun changePassword(@Body body: ChangePasswordRequest): AuthResponse
+    @GET("api/account/export") suspend fun exportData(): okhttp3.ResponseBody
+    @POST("api/account/delete") suspend fun deleteAccount(@Body body: DeleteAccountRequest): MessageResponse
 
     // ---- Plans & subscriptions ----
     @GET("api/plans") suspend fun plans(): List<Plan>
     @GET("api/subscriptions") suspend fun subscriptions(): List<Subscription>
     @POST("api/subscriptions/checkout") suspend fun checkout(@Body body: CheckoutRequest): CheckoutResponse
-    @POST("api/subscriptions/{id}/cancel") suspend fun cancelSubscription(@Path("id") id: Int): Response<Unit>
+    @POST("api/subscriptions/{id}/cancel") suspend fun cancelSubscription(@Path("id") id: Int): CancelResult
     @POST("api/dev/simulate-payment/{id}") suspend fun simulatePayment(@Path("id") id: Int): Response<Unit>
 
     // ---- Content ----
@@ -40,12 +45,26 @@ interface Api {
     @POST("api/classes/{id}/book") suspend fun book(@Path("id") id: Int): Booking
     @POST("api/bookings/{id}/cancel") suspend fun cancelBooking(@Path("id") id: Int): Response<Unit>
 
+    // ---- Notifications ----
+    @GET("api/notifications") suspend fun notifications(
+        @Query("afterId") afterId: Int? = null,
+        @Query("unreadOnly") unreadOnly: Boolean = false,
+    ): List<AppNotification>
+    @GET("api/notifications/unread-count") suspend fun unreadCount(): UnreadCount
+    @POST("api/notifications/read") suspend fun markRead(@Body body: MarkReadRequest): Response<Unit>
+
     // ---- Journal ----
     @GET("api/journal") suspend fun journal(): List<JournalEntry>
     @POST("api/journal") suspend fun addJournal(@Body body: JournalRequest): JournalEntry
     @DELETE("api/journal/{id}") suspend fun deleteJournal(@Path("id") id: Int): Response<Unit>
 
+    // ---- Error reporting ----
+    @POST("api/telemetry/errors") suspend fun reportError(@Body body: ErrorReportBody): Response<Unit>
+
     // ---- Admin ----
+    @GET("api/admin/errors") suspend fun adminErrors(@Query("status") status: String = "NEW"): List<ErrorLogItem>
+    @POST("api/admin/errors/{id}/resolve") suspend fun adminResolveError(@Path("id") id: Int): Response<Unit>
+    @POST("api/admin/errors/resolve-all") suspend fun adminResolveAllErrors(): Response<Unit>
     @GET("api/admin/summary") suspend fun adminSummary(): AdminSummary
     @POST("api/admin/lessons") suspend fun adminCreateLesson(@Body body: LessonUpsert): Int
     @DELETE("api/admin/lessons/{id}") suspend fun adminDeleteLesson(@Path("id") id: Int): Response<Unit>

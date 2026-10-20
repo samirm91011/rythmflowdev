@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RhythmFlow.Api.Data;
@@ -69,7 +69,7 @@ public class JournalController(AppDbContext db) : ApiController
 /// <summary>Administrator functions. Every action requires the ADMIN role (BR-15, FR-22).</summary>
 [ApiController, Authorize(Roles = Roles.Admin)]
 [Route("api/admin")]
-public class AdminController(AppDbContext db) : ApiController
+public class AdminController(AppDbContext db, NotificationService notifications) : ApiController
 {
     [HttpGet("summary")]
     public async Task<AdminSummaryDto> Summary()
@@ -82,7 +82,8 @@ public class AdminController(AppDbContext db) : ApiController
             active.Count,
             await db.Classes.CountAsync(c => c.Status == "SCHEDULED" && c.StartTime > now),
             await db.Bookings.CountAsync(b => b.Status == BookingStatus.Booked && b.Class!.StartTime > now),
-            active.Sum(s => s.Plan!.Price));
+            active.Sum(s => s.Plan!.Price),
+            await db.ErrorLogs.CountAsync(e => e.Status == "NEW"));
     }
 
     // ---- Lessons ----
@@ -165,8 +166,11 @@ public class AdminController(AppDbContext db) : ApiController
         var c = await db.Classes.FindAsync(id);
         if (c is null) return NotFound();
         c.Status = "CANCELLED";
-        foreach (var b in await db.Bookings.Where(b => b.ClassId == id && b.Status == BookingStatus.Booked).ToListAsync())
-            b.Status = BookingStatus.Cancelled;
+        var affected = await db.Bookings.Where(b => b.ClassId == id && b.Status == BookingStatus.Booked).ToListAsync();
+        foreach (var b in affected) b.Status = BookingStatus.Cancelled;
+        // Tell everyone who had a place so they are not left waiting for a class that is not happening.
+        notifications.Stage(affected.Select(b => b.UserId), "CLASS", "Class cancelled",
+            $"Sorry, {c.Name} on {c.StartTime:ddd d MMM} has been cancelled.", "classes");
         await db.SaveChangesAsync();
         return NoContent();
     }
@@ -201,5 +205,33 @@ public class AdminController(AppDbContext db) : ApiController
         await db.SaveChangesAsync();
         return p.Id;
     }
-}
 
+    // ---- Error log (reports from the API and the app) ----
+    [HttpGet("errors")]
+    public async Task<List<ErrorLogDto>> Errors([FromQuery] string status = "NEW")
+    {
+        var q = db.ErrorLogs.AsQueryable();
+        if (status != "ALL") q = q.Where(e => e.Status == status);
+        var rows = await q.OrderByDescending(e => e.LastSeen).Take(100).ToListAsync();
+        return rows.Select(e => new ErrorLogDto(e.Id, e.Source, e.Message, e.Details, e.Route, e.UserEmail, e.AppVersion, e.Device,
+            e.Count, e.FirstSeen, e.LastSeen, e.Status)).ToList();
+    }
+
+    [HttpPost("errors/{id:int}/resolve")]
+    public async Task<IActionResult> ResolveError(int id)
+    {
+        var e = await db.ErrorLogs.FindAsync(id);
+        if (e is null) return NotFound();
+        e.Status = "RESOLVED";
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPost("errors/resolve-all")]
+    public async Task<IActionResult> ResolveAllErrors()
+    {
+        foreach (var e in await db.ErrorLogs.Where(e => e.Status == "NEW").ToListAsync()) e.Status = "RESOLVED";
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+}

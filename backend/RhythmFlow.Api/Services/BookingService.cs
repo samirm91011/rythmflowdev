@@ -41,8 +41,16 @@ public class BookingService(AppDbContext db, Microsoft.Extensions.Options.IOptio
 
         var booking = new Booking { UserId = userId, ClassId = classId, Status = BookingStatus.Booked };
         db.Bookings.Add(booking);
-        await db.SaveChangesAsync();
-        await tx.CommitAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Two taps arrived at once: the unique index let one through and stopped the other.
+            return (false, "You have already booked this class.", null);
+        }
         booking.Class = cls;
         return (true, null, ToBookingDto(booking));
     }
