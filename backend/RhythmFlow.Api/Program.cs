@@ -116,11 +116,15 @@ builder.Services.AddRateLimiter(o =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
 });
 
-// Behind Azure's front door the API only sees plain HTTP from the proxy. Trust the proxy's headers so links the API
-// builds (video playback, PayFast return URLs) use the real https address.
+// Behind a proxy (CloudFront + nginx on AWS) the API only sees plain HTTP. Trust the proxy's headers so links the API
+// builds (video playback, PayFast return URLs) use the real https address, and rate limits see the real client IP.
+// On AWS: ForwardedHeaders:ProtoHeaderName = CloudFront-Forwarded-Proto and ForwardedHeaders:ForwardLimit = 2
+// (client -> CloudFront -> nginx), set by aws/rhythmflow-stack.yaml.
 builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(o =>
 {
     o.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    o.ForwardedProtoHeaderName = cfg["ForwardedHeaders:ProtoHeaderName"] ?? "X-Forwarded-Proto";
+    o.ForwardLimit = cfg.GetValue("ForwardedHeaders:ForwardLimit", 1);
     o.KnownNetworks.Clear();
     o.KnownProxies.Clear();
 });
